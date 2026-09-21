@@ -113,6 +113,46 @@ class TestBoletimService(SimpleTestCase):
 
         self.assertEqual(resultado, [])
 
+    def test_preserva_aluno_sem_exibir_componente_nulo(self) -> None:
+        """Mantém o aluno quando a linha não identifica disciplina."""
+        registro = self._registro(modalidade=5, bimestre=1)
+        registro.bimestre = None
+        registro.componente_codigo = None
+        registro.disciplina_nome = None
+        registro.disciplina_nome_sgp = None
+        repository = MagicMock()
+        repository.listar_por_aluno.return_value = [registro]
+
+        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+
+        self.assertEqual(resultado["dados_aluno"]["aluno_codigo"], 123)
+        self.assertEqual(resultado["componentes"], [])
+        self.assertEqual(resultado["regencias"], [])
+
+    def test_lista_preserva_aluno_sem_exibir_componente_nulo(self) -> None:
+        """Remove a disciplina nula também na consulta coletiva."""
+        registro = self._registro(modalidade=5, bimestre=1)
+        registro.bimestre = None
+        registro.componente_codigo = None
+        registro.disciplina_nome = None
+        registro.disciplina_nome_sgp = None
+        repository = MagicMock()
+        repository.listar_boletins.return_value = [registro]
+
+        resultado = BoletimService(repository).listar_boletins(
+            ano_letivo=2026,
+            dre_codigo="1",
+            ue_codigo="2",
+            semestre=1,
+            modalidade=5,
+            alunos_codigo=[123],
+        )
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["dados_aluno"]["aluno_codigo"], 123)
+        self.assertEqual(resultado[0]["componentes"], [])
+        self.assertEqual(resultado[0]["regencias"], [])
+
     def test_completa_quatro_bimestres_para_modalidade_anual(self) -> None:
         """Inclui períodos vazios para uma modalidade anual."""
         repository = MagicMock()

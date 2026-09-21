@@ -83,7 +83,9 @@ class BoletimService:
             return {"dados_aluno": None, "componentes": [], "regencias": []}
 
         modelo_aluno = registros[0]
-        registros = self._completar_bimestres(registros)
+        registros = self._filtrar_componentes_validos(registros)
+        if registros:
+            registros = self._completar_bimestres(registros)
         if bimestre is not None:
             registros = [
                 registro
@@ -135,7 +137,14 @@ class BoletimService:
         boletins: list[dict[str, object]] = []
         for registros_aluno in grupos.values():
             modelo_aluno = registros_aluno[0]
-            registros_completos = self._completar_bimestres(registros_aluno)
+            registros_validos = self._filtrar_componentes_validos(
+                registros_aluno
+            )
+            registros_completos = (
+                self._completar_bimestres(registros_validos)
+                if registros_validos
+                else []
+            )
             if bimestre is not None:
                 registros_completos = [
                     registro
@@ -146,6 +155,25 @@ class BoletimService:
                 self._agrupar_resposta(modelo_aluno, registros_completos)
             )
         return boletins
+
+    @staticmethod
+    def _filtrar_componentes_validos(
+        registros: list[Boletim],
+    ) -> list[Boletim]:
+        """Remove linhas da base sem identificação de disciplina.
+
+        Args:
+            registros: Linhas consolidadas do boletim do aluno.
+
+        Returns:
+            Linhas que representam componentes curriculares identificados.
+        """
+        return [
+            registro
+            for registro in registros
+            if registro.componente_codigo is not None
+            and registro.disciplina_nome_sgp is not None
+        ]
 
     @staticmethod
     def _agrupar_resposta(
