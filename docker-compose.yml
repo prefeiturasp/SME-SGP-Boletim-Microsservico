@@ -1,0 +1,13 @@
+services:
+  boletim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sme_sgp_boletim_ms
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+    ports:
+      - "8001:8000"
+    restart: unless-stopped
