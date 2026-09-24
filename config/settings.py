@@ -116,7 +116,7 @@ SPECTACULAR_SETTINGS = {
 
 TEST_RUNNER = "config.test_runner.BoletimTestRunner"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"

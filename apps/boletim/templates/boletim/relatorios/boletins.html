@@ -1,0 +1,96 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>RELATÓRIO BOLETIM ESCOLAR DETALHADO</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 5mm 23.2mm;
+            @bottom-left {
+                content: "SGP - Sistema de Gestão Pedagógica | {{ data_impressao }}";
+                font-family: "DejaVu Sans", sans-serif;
+                font-size: 7.2px;
+            }
+            @bottom-right {
+                content: counter(page) " / " counter(pages);
+                font-family: "DejaVu Sans", sans-serif;
+                font-size: 7.2px;
+            }
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #42474a; font-family: "DejaVu Sans", sans-serif; }
+        .pagina { break-after: page; }
+        .pagina:last-child { break-after: auto; }
+        .boletim { width: 100%; min-height: 12.9cm; break-inside: avoid; }
+        .boletim:first-child { margin-bottom: 48px; }
+        .por-1 .boletim { min-height: 27.8cm; margin-bottom: 0; }
+        .por-6 .boletim { min-height: calc(4.78cm - 2px); margin-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; empty-cells: show; table-layout: fixed; }
+        .cabecalho-principal td { border: 0; }
+        .img-logo-sgp { height: 51.2px; float: left; }
+        .cabecalho-titulos { width: 80%; padding-right: 8px; }
+        .cabecalho-titulo-01 { text-align: right; font-size: 9.6px; font-weight: bold; }
+        .cabecalho-titulo-02 { text-align: right; font-size: 11.2px; }
+        .cabecalho-relatorio { font-size: 9.6px; border: 0; }
+        .cabecalho-relatorio td { border: 0.8px solid #42474a; padding-left: 8px; }
+        .cabecalho-relatorio + .cabecalho-relatorio td { border-top-color: #fff; }
+        .margin-top { margin-top: 4px; }
+        .por-1 .margin-top { margin-top: 8px; }
+        .tabela { font-size: 9.6px; border: 0; }
+        .tabela td, .tabela th { border: 0.8px solid #42474a; padding-left: 8px; }
+        .tabela .titulo { background-color: #f3f3f3; }
+        .col-componente { width: 44%; }
+        .componente, .valor-titulo { text-align: left; font-size: 9.6px; }
+        .centro-bimestre { text-align: center; font-size: 9.6px; }
+        .centro-bimestre-eja { text-align: center; font-size: 9.6px; }
+        .centro-titulo, .centro-valor { padding: 0 2.4px !important; text-align: center; }
+        .centro-titulo-eja, .centro-valor-eja { padding: 0 2.4px !important; text-align: center; }
+        .centro-titulo, .centro-titulo-eja { font-size: 8.8px; }
+        .centro-valor, .centro-valor-eja { font-size: 8px; }
+        .sem-borda-bottom { border-bottom-color: #fff !important; }
+        .legenda { margin-top: 4px; font-size: 9.6px; }
+        .parecer td { background: #f3f3f3; font-weight: bold; }
+        .tabela-recomendacoes { margin-top: 8px; font-size: 9.6px; }
+        .tabela-recomendacoes td { border: 0.8px solid #42474a; padding: 0 4px; }
+        .recomendacoes-titulo { text-align: center; background: #f3f3f3; font-weight: bold; }
+        .tabela-final { margin-top: 0.8px; font-size: 11.2px; }
+        .tabela-final td { border-bottom: 0.8px solid #42474a; padding-left: 8px; }
+        .por-6 { font-size: 45%; }
+        .por-6 .img-logo-sgp { height: 28px; }
+        .por-6 .cabecalho-titulo-01, .por-6 .cabecalho-relatorio,
+        .por-6 .tabela, .por-6 .legenda, .por-6 .tabela-recomendacoes { font-size: 5px; }
+        .por-6 .cabecalho-titulo-02 { font-size: 6px; }
+        .por-6 .centro-valor, .por-6 .centro-valor-eja { font-size: 4px; }
+        .por-6 .boletim:first-child { margin-bottom: 2px; }
+    </style>
+</head>
+<body class="por-{{ boletins_por_pagina }}">
+{% for pagina in paginas %}
+<section class="pagina">
+{% for linha in pagina.linhas %}{% for boletim in linha.boletins %}
+<article class="boletim">
+    <table class="cabecalho-principal"><tr>
+        <td width="10%"><img class="img-logo-sgp" src="{% static 'boletim/relatorios/imagens/logo-sme.png' %}" alt="Logo SGP"></td>
+        <td class="cabecalho-titulos"><div class="cabecalho-titulo-01">BOLETIM ESCOLAR - {{ boletim.dados.ano_letivo }}</div><div class="cabecalho-titulo-02">SECRETARIA MUNICIPAL DE EDUCAÇÃO</div><div class="cabecalho-titulo-02">{{ boletim.dados.dre_nome }}</div><div class="cabecalho-titulo-02">{{ boletim.dados.ue_nome }}</div></td>
+    </tr></table>
+    <table class="cabecalho-relatorio margin-top"><tr><td width="50%">Estudante: {{ boletim.nome_aluno }}</td><td width="50%">Ciclo: {{ boletim.dados.ciclo }}</td></tr></table>
+    <table class="cabecalho-relatorio"><tr><td>Código EOL: {{ boletim.dados.aluno_codigo }}</td><td>Turma: {{ boletim.dados.turma_relatorio }}</td><td>Frequência Global: {{ boletim.frequencia_global }}</td></tr></table>
+    <table class="tabela margin-top"><colgroup><col class="col-componente">{% for periodo in boletim.periodos %}<col><col>{% endfor %}</colgroup><thead>
+        <tr class="titulo"><th rowspan="2" class="componente sem-borda-bottom">Componentes curriculares</th>{% for periodo in boletim.periodos %}<th colspan="2" class="{% if boletim.periodos|length <= 3 %}centro-bimestre-eja{% else %}centro-bimestre{% endif %}">{% if periodo == 0 %}Final{% else %}{{ periodo }}° Bim.{% endif %}</th>{% endfor %}</tr>
+        <tr class="titulo">{% for periodo in boletim.periodos %}<th class="{% if boletim.periodos|length <= 3 %}centro-titulo-eja{% else %}centro-titulo{% endif %} sem-borda-bottom">{% if boletim.usa_conceito %}Conc.{% else %}Nota{% endif %}</th><th class="{% if boletim.periodos|length <= 3 %}centro-titulo-eja{% else %}centro-titulo{% endif %} sem-borda-bottom">%</th>{% endfor %}</tr>
+    </thead></table>
+    {% for grupo in boletim.grupos %}<table class="tabela{% if not forloop.first %} margin-top{% endif %}"><colgroup><col class="col-componente">{% for periodo in boletim.periodos %}<col><col>{% endfor %}</colgroup><tbody>
+    {% for componente in grupo.componentes %}<tr><td class="valor-titulo">{{ componente.nome }}</td>{% for periodo in componente.periodos %}<td class="{% if boletim.periodos|length <= 3 %}centro-valor-eja{% else %}centro-valor{% endif %}">{{ periodo.nota }}</td>{% if not componente.eh_regencia %}<td class="{% if boletim.periodos|length <= 3 %}centro-valor-eja{% else %}centro-valor{% endif %}">{{ periodo.frequencia }}</td>{% elif componente.primeira_linha_regencia %}<td class="{% if boletim.periodos|length <= 3 %}centro-valor-eja{% else %}centro-valor{% endif %}" rowspan="{{ componente.linhas_regencia }}">{{ periodo.frequencia }}</td>{% endif %}{% endfor %}</tr>{% endfor %}
+    </tbody></table>{% endfor %}
+    {% if boletim.exibe_legenda %}<p class="legenda">Legenda: F:Frequente - NF:Não Frequente - P:Plenamente Satisfatório - S:Satisfatório - NS:Não Satisfatório</p>{% endif %}
+    {% if boletim.parecer_conclusivo %}<table class="tabela parecer margin-top"><tr><td>Parecer Conclusivo: {{ boletim.parecer_conclusivo }}</td></tr></table>{% endif %}
+    {% if boletim.exibe_recomendacoes and boletim.recomendacoes_aluno %}<table class="tabela-recomendacoes"><tr><td class="recomendacoes-titulo">Recomendações ao estudante</td></tr><tr><td>{{ boletim.recomendacoes_aluno|safe }}</td></tr></table>{% endif %}
+    {% if boletim.exibe_recomendacoes and boletim.recomendacoes_familia %}<table class="tabela-recomendacoes"><tr><td class="recomendacoes-titulo">Recomendações a família</td></tr><tr><td>{{ boletim.recomendacoes_familia|safe }}</td></tr></table>{% endif %}
+    <table class="tabela-final"><tr><td>&nbsp;</td></tr><tr><td>&nbsp;</td></tr></table>
+</article>
+{% endfor %}{% endfor %}
+</section>
+{% empty %}<section class="pagina">Não foram encontradas informações para geração do boletim.</section>{% endfor %}
+</body>
+</html>

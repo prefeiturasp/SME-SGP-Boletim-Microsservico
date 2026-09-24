@@ -9,6 +9,10 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl git \
+    libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
+    libpangoft2-1.0-0 libharfbuzz-subset0 \
+    fontconfig fonts-dejavu-core \
+    && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md manage.py /app/

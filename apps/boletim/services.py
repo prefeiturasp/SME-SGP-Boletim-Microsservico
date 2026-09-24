@@ -1,11 +1,13 @@
 """Casos de uso do domínio de boletim."""
 
+from apps.boletim.constantes import (
+    BIMESTRES_ANUAIS,
+    BIMESTRES_SEMESTRAIS,
+    MODALIDADES_SEMESTRAIS,
+)
 from apps.boletim.models import Boletim
 from apps.boletim.repository import BoletimRepository
 
-_MODALIDADES_SEMESTRAIS = frozenset({3, 10})
-_BIMESTRES_ANUAIS = (1, 2, 3, 4)
-_BIMESTRES_SEMESTRAIS = (1, 2)
 _CAMPOS_SEM_DADOS = (
     "periodo_escolar_id",
     "componente_existia_no_periodo",
@@ -199,6 +201,7 @@ class BoletimService:
             "ue_nome": modelo_aluno.ue_nome,
             "turma_codigo": modelo_aluno.turma_codigo,
             "turma_nome": modelo_aluno.turma_nome,
+            "ciclo": modelo_aluno.ciclo,
             "aluno_codigo": modelo_aluno.aluno_codigo,
             "aluno_nome": modelo_aluno.aluno_nome,
             "nome_social": modelo_aluno.nome_social,
@@ -209,12 +212,27 @@ class BoletimService:
         regencias_por_codigo: dict[
             tuple[str, int | None], dict[str, object]
         ] = {}
+        registros_por_componente: dict[int, list[Boletim]] = {}
         for registro in registros:
-            if registro.regencia:
+            if registro.componente_codigo is not None:
+                registros_por_componente.setdefault(
+                    registro.componente_codigo, []
+                ).append(registro)
+        for registro in registros:
+            if registro.regencia and registro.componentes_regencia:
+                BoletimService._agrupar_regencia_pai(
+                    regencias_por_codigo,
+                    registro,
+                    registros_por_componente,
+                )
+                continue
+            if registro.regencia and registro.componente_pai_codigo:
                 BoletimService._agrupar_regencia(
                     regencias_por_codigo,
                     registro,
                 )
+                continue
+            if registro.regencia:
                 continue
             chave = (
                 registro.turma_componente_codigo or registro.turma_codigo,
@@ -375,6 +393,7 @@ class BoletimService:
             {
                 "codigo": codigo_pai,
                 "nome": registro.componente_pai_nome,
+                "grupo_matriz_id": registro.grupo_matriz_id,
                 "registra_frequencia": registro.registra_frequencia,
                 "bimestres": {},
                 "componentes": {},
@@ -421,6 +440,85 @@ class BoletimService:
             )
 
     @staticmethod
+    def _agrupar_regencia_pai(
+        regencias: dict[tuple[str, int | None], dict[str, object]],
+        registro_pai: Boletim,
+        registros_por_componente: dict[int, list[Boletim]],
+    ) -> None:
+        """Agrupe o pai de regência e associe seus componentes declarados.
+
+        Args:
+            regencias: Agrupamentos indexados pelo componente pai.
+            registro_pai: Linha do componente de regência.
+            registros_por_componente: Linhas acadêmicas indexadas por código.
+        """
+        codigo_pai = registro_pai.componente_codigo
+        chave = (
+            registro_pai.turma_componente_codigo or registro_pai.turma_codigo,
+            codigo_pai,
+        )
+        regencia = regencias.setdefault(
+            chave,
+            {
+                "codigo": codigo_pai,
+                "nome": registro_pai.disciplina_nome_sgp,
+                "grupo_matriz_id": registro_pai.grupo_matriz_id,
+                "registra_frequencia": registro_pai.registra_frequencia,
+                "bimestres": {},
+                "componentes": {},
+            },
+        )
+        bimestres = regencia["bimestres"]
+        if isinstance(bimestres, dict):
+            bimestres[registro_pai.bimestre] = BoletimService._dados_bimestre(
+                registro_pai,
+                incluir_nota=False,
+                incluir_frequencia=registro_pai.registra_frequencia,
+                incluir_sintese=False,
+            )
+
+        componentes = regencia["componentes"]
+        if not isinstance(componentes, dict):
+            return
+        for item in registro_pai.componentes_regencia:
+            if not isinstance(item, dict) or not isinstance(
+                item.get("codigo"), int
+            ):
+                continue
+            codigo = item["codigo"]
+            componente = componentes.setdefault(
+                codigo,
+                {
+                    "componente_codigo": codigo,
+                    "disciplina_nome": item.get("nome"),
+                    "disciplina_nome_sgp": item.get("nome"),
+                    "lanca_nota": bool(item.get("lanca_nota")),
+                    "bimestres": [],
+                },
+            )
+            bimestres_componente = componente["bimestres"]
+            if not isinstance(bimestres_componente, list):
+                continue
+            registros_filho = registros_por_componente.get(codigo, [])
+            registro_filho = next(
+                (
+                    filho
+                    for filho in registros_filho
+                    if filho.bimestre == registro_pai.bimestre
+                ),
+                None,
+            )
+            fonte_nota = registro_filho or registro_pai
+            bimestres_componente.append(
+                BoletimService._dados_bimestre(
+                    fonte_nota,
+                    incluir_nota=bool(item.get("lanca_nota")),
+                    incluir_frequencia=False,
+                    incluir_sintese=False,
+                )
+            )
+
+    @staticmethod
     def _finalizar_regencias(
         regencias: dict[tuple[str, int | None], dict[str, object]],
     ) -> list[dict[str, object]]:
@@ -456,11 +554,11 @@ class BoletimService:
             componente: Componente com ordem, grupo matriz e nome.
 
         Returns:
-            Chave composta usada na ordenação da resposta.
+            Matriz, presença de área e nome usados na ordenação oficial.
         """
         return (
-            BoletimService._inteiro_ordenacao(componente["ordem_grupo_area"]),
             BoletimService._inteiro_ordenacao(componente["grupo_matriz_id"]),
+            0 if componente["ordem_grupo_area"] is not None else 1,
             str(componente["disciplina_nome_sgp"] or ""),
         )
 
@@ -511,9 +609,9 @@ class BoletimService:
         """
         modalidade = registros[0].modalidade_codigo
         bimestres = (
-            _BIMESTRES_SEMESTRAIS
-            if modalidade in _MODALIDADES_SEMESTRAIS
-            else _BIMESTRES_ANUAIS
+            BIMESTRES_SEMESTRAIS
+            if modalidade in MODALIDADES_SEMESTRAIS
+            else BIMESTRES_ANUAIS
         )
         grupos: dict[tuple[str, int | None, str | None], list[Boletim]] = {}
         for registro in registros:

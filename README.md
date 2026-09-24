@@ -66,4 +66,7 @@ Endpoints iniciais:
   consulta os boletins de vários alunos. Sem `alunosCodigo`, retorna todos os
   alunos encontrados no contexto informado;
 - `/boletim/api/v1/schema/`: schema OpenAPI;
+- `GET /api/v1/boletim/pdf/`: gera os boletins em PDF com os mesmos filtros
+  da consulta coletiva. `boletinsPorPagina` aceita `1`, `2` ou `6` e usa `2`
+  por padrão;
 - `/boletim/api/v1/docs/`: Swagger UI.

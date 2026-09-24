@@ -126,6 +126,10 @@ class TestBoletimService(SimpleTestCase):
         resultado = BoletimService(repository).listar_por_aluno(123, 2026)
 
         self.assertEqual(resultado["dados_aluno"]["aluno_codigo"], 123)
+        self.assertEqual(
+            resultado["dados_aluno"]["ciclo"],
+            "Ciclo Interdisciplinar",
+        )
         self.assertEqual(resultado["componentes"], [])
         self.assertEqual(resultado["regencias"], [])
 
@@ -323,6 +327,66 @@ class TestBoletimService(SimpleTestCase):
             8,
         )
 
+    def test_agrupa_componentes_declarados_pelo_pai_da_regencia(self) -> None:
+        """Mantém o componente normal e o repete como filho da regência."""
+        ciencias = self._registro(modalidade=5, bimestre=1)
+        ciencias.componente_codigo = 89
+        ciencias.disciplina_nome = "Ciências"
+        ciencias.disciplina_nome_sgp = "Ciências"
+        regencia = self._registro(modalidade=5, bimestre=1)
+        regencia.componente_codigo = 1105
+        regencia.disciplina_nome_sgp = "Regência de Classe Fund I - 5H"
+        regencia.regencia = True
+        regencia.componentes_regencia = [
+            {"codigo": 89, "nome": "Ciências", "lanca_nota": True},
+            {"codigo": 8, "nome": "Geografia", "lanca_nota": True},
+        ]
+
+        resultado = BoletimService._agrupar_resposta(
+            ciencias,
+            [ciencias, regencia],
+        )
+
+        self.assertEqual(
+            [item["disciplina_nome_sgp"] for item in resultado["componentes"]],
+            ["Ciências"],
+        )
+        grupo = resultado["regencias"][0]
+        self.assertEqual(grupo["codigo"], 1105)
+        self.assertEqual(
+            [item["disciplina_nome_sgp"] for item in grupo["componentes"]],
+            ["Ciências", "Geografia"],
+        )
+        self.assertEqual(grupo["componentes"][0]["bimestres"][0]["nota"], 8)
+
+    def test_ordena_componentes_primeiro_por_grupo_matriz(self) -> None:
+        """Replica a ordem de agrupamento do servidor de relatórios."""
+        matriz_dois = self._registro(modalidade=5, bimestre=1)
+        matriz_dois.componente_codigo = 20
+        matriz_dois.grupo_matriz_id = 2
+        matriz_dois.ordem_grupo_area = 1
+        matriz_dois.disciplina_nome_sgp = "Arte"
+        matriz_um_sem_area = self._registro(modalidade=5, bimestre=1)
+        matriz_um_sem_area.componente_codigo = 11
+        matriz_um_sem_area.grupo_matriz_id = 1
+        matriz_um_sem_area.ordem_grupo_area = None
+        matriz_um_sem_area.disciplina_nome_sgp = "Sala de leitura"
+        matriz_um_com_area = self._registro(modalidade=5, bimestre=1)
+        matriz_um_com_area.componente_codigo = 10
+        matriz_um_com_area.grupo_matriz_id = 1
+        matriz_um_com_area.ordem_grupo_area = 3
+        matriz_um_com_area.disciplina_nome_sgp = "Matemática"
+
+        resultado = BoletimService._agrupar_resposta(
+            matriz_dois,
+            [matriz_dois, matriz_um_sem_area, matriz_um_com_area],
+        )
+
+        self.assertEqual(
+            [item["disciplina_nome_sgp"] for item in resultado["componentes"]],
+            ["Matemática", "Sala de leitura", "Arte"],
+        )
+
     def test_aplica_flags_de_exibicao_do_componente(self) -> None:
         """Oculta nota e frequÃªncia quando o componente nÃ£o as registra."""
         registro = self._registro(modalidade=5, bimestre=1)
@@ -413,6 +477,7 @@ class TestBoletimService(SimpleTestCase):
             turma_componente_codigo="3",
             turma_regular_codigo="30",
             turma_nome="Turma",
+            ciclo="Ciclo Interdisciplinar",
             bimestre=bimestre,
             periodo_escolar_id=10,
             componente_codigo=4,

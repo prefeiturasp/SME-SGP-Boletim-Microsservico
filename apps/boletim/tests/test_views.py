@@ -10,6 +10,7 @@ from apps.boletim.serializers import MODALIDADES_CHOICES
 
 _URL = "/api/v1/boletim/alunos/123/"
 _URL_COLETIVA = "/api/v1/boletim/"
+_URL_PDF = "/api/v1/boletim/pdf/"
 
 
 def _cliente_autenticado() -> APIClient:
@@ -238,6 +239,58 @@ class TestBoletinsView(TestCase):
         )
 
 
+class TestBoletinsPdfView(TestCase):
+    """Valida o contrato HTTP da geração coletiva em PDF."""
+
+    def setUp(self) -> None:
+        """Prepara um cliente autenticado para os testes."""
+        self.client = _cliente_autenticado()
+
+    @patch("apps.boletim.api.views.GeradorBoletinsPdf")
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_retorna_pdf_com_dois_boletins_por_padrao(
+        self, service_class, gerador_class
+    ) -> None:
+        """Gera PDF inline e usa duas vias por página como no relatório."""
+        boletins: list[dict[str, object]] = []
+        service_class.return_value.listar_boletins.return_value = boletins
+        gerador_class.return_value.gerar.return_value = b"%PDF-teste"
+
+        response = self.client.get(_URL_PDF, self._filtros())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertEqual(
+            response["Content-Disposition"],
+            'inline; filename="boletins-escolares.pdf"',
+        )
+        gerador_class.return_value.gerar.assert_called_once_with(
+            boletins,
+            boletins_por_pagina=2,
+        )
+
+    def test_rejeita_quantidade_de_boletins_nao_suportada(self) -> None:
+        """Retorna HTTP 400 quando a paginação não é 1, 2 ou 6."""
+        filtros = self._filtros()
+        filtros["boletinsPorPagina"] = 4
+
+        response = self.client.get(_URL_PDF, filtros)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("boletinsPorPagina", response.json())
+
+    @staticmethod
+    def _filtros() -> dict[str, int | str]:
+        """Retorna os filtros mínimos aceitos pelo endpoint PDF."""
+        return {
+            "anoLetivo": 2026,
+            "dreCodigo": "108200",
+            "ueCodigo": "094501",
+            "semestre": 1,
+            "modalidade": 5,
+        }
+
+
 class TestDocumentacaoBoletim(TestCase):
     """Valida a documentação OpenAPI do boletim."""
 
@@ -252,6 +305,7 @@ class TestDocumentacaoBoletim(TestCase):
         schema = response.json()
         for caminho in (
             "/api/v1/boletim/",
+            "/api/v1/boletim/pdf/",
             "/api/v1/boletim/alunos/{aluno_codigo}/",
         ):
             parametros = schema["paths"][caminho]["get"]["parameters"]

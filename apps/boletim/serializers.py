@@ -74,6 +74,16 @@ class FiltrosBoletinsSerializer(serializers.Serializer):
     )
 
 
+class FiltrosBoletinsPdfSerializer(FiltrosBoletinsSerializer):
+    """Valida os filtros da geração coletiva de boletins em PDF."""
+
+    boletinsPorPagina = serializers.ChoiceField(  # noqa: N815
+        choices=(1, 2, 6),
+        default=2,
+        help_text="Quantidade de boletins exibidos em cada página.",
+    )
+
+
 class DadosAlunoBoletimSerializer(serializers.Serializer):
     """Serializa a identificação do aluno e de sua turma."""
 
@@ -88,6 +98,7 @@ class DadosAlunoBoletimSerializer(serializers.Serializer):
     ueNome = serializers.CharField(source="ue_nome")  # noqa: N815
     turmaCodigo = serializers.CharField(source="turma_codigo")  # noqa: N815
     turmaNome = serializers.CharField(source="turma_nome")  # noqa: N815
+    ciclo = serializers.CharField(allow_null=True)
     alunoCodigo = serializers.IntegerField(source="aluno_codigo")  # noqa: N815
     alunoNome = serializers.CharField(  # noqa: N815
         source="aluno_nome", allow_null=True
@@ -307,6 +318,7 @@ class RegistroBoletimSerializer(serializers.ModelSerializer):
     ueNome = serializers.CharField(source="ue_nome")  # noqa: N815
     turmaCodigo = serializers.CharField(source="turma_codigo")  # noqa: N815
     turmaNome = serializers.CharField(source="turma_nome")  # noqa: N815
+    ciclo = serializers.CharField(allow_null=True)
     alunoCodigo = serializers.IntegerField(source="aluno_codigo")  # noqa: N815
     alunoNome = serializers.CharField(  # noqa: N815
         source="aluno_nome", allow_null=True
@@ -375,6 +387,7 @@ class RegistroBoletimSerializer(serializers.ModelSerializer):
             "ueNome",
             "turmaCodigo",
             "turmaNome",
+            "ciclo",
             "alunoCodigo",
             "alunoNome",
             "nomeSocial",
