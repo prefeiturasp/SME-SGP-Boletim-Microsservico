@@ -69,8 +69,10 @@ def montar_contexto_pdf(
     paginas: list[PaginaBoletinsPdf] = []
     for inicio in range(0, len(formatados), boletins_por_pagina):
         itens = formatados[inicio : inicio + boletins_por_pagina]
+        quantidade_por_linha = 2 if boletins_por_pagina == 6 else 1
         linhas: list[LinhaBoletinsPdf] = [
-            {"boletins": [item]} for item in itens
+            {"boletins": itens[indice : indice + quantidade_por_linha]}
+            for indice in range(0, len(itens), quantidade_por_linha)
         ]
         paginas.append({"linhas": linhas})
     return {

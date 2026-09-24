@@ -130,6 +130,19 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
         html = render_to_string("boletim/relatorios/boletins.html", contexto)
 
         self.assertIn("table-layout: fixed", html)
+        self.assertIn("margin: 5mm;", html)
+        self.assertIn(".por-2 .img-logo-sgp { height: 51.2px; }", html)
+        self.assertIn(".por-2 .centro-valor", html)
+        self.assertIn('font-family: "Roboto Mono", monospace', html)
+        self.assertIn(
+            ".cabecalho-titulo-02 { text-align: right; "
+            "font-size: 14px; line-height: 1.5; }",
+            html,
+        )
+        self.assertIn("font-size: 12px", html)
+        self.assertIn("padding-left: 10px", html)
+        self.assertIn('<div class="linha">', html)
+        self.assertIn("height: 9cm", html)
         self.assertNotIn("overflow: hidden", html)
         self.assertIn("<p>Teste</p>", html)
         self.assertNotIn('<td width="10%"></td>', html)

@@ -15,7 +15,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         cenarios = (
             (1, 7, 1),
             (2, 4, 2),
-            (6, 2, 6),
+            (6, 2, 3),
         )
         for (
             boletins_por_pagina,
@@ -36,6 +36,13 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
                     len(contexto["paginas"][0]["linhas"]),
                     linhas_primeira,
                 )
+                if boletins_por_pagina == 6:
+                    self.assertTrue(
+                        all(
+                            len(linha["boletins"]) == 2
+                            for linha in contexto["paginas"][0]["linhas"]
+                        )
+                    )
 
     def test_formata_nota_conceito_e_frequencia(self) -> None:
         """Preserva conceito e formata frequência com duas casas."""
