@@ -14,6 +14,8 @@ class Boletim(ModeloBase):
     """
 
     aluno_codigo = models.BigIntegerField(primary_key=True)
+    codigo_situacao_matricula = models.IntegerField()
+    numero_chamada = models.TextField(null=True)
     ano_letivo = models.IntegerField()
     modalidade_codigo = models.IntegerField()
     semestre = models.IntegerField()

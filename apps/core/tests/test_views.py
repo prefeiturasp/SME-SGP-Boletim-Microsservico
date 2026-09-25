@@ -12,7 +12,7 @@ class TestHealthView(TestCase):
 
     def test_health_e_publico_e_retorna_identificacao(self) -> None:
         """Retorna HTTP 200 sem exigir API key."""
-        response = APIClient().get("/api/v1/boletim/health/")
+        response = APIClient().get("/api/boletim/health/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
@@ -21,7 +21,7 @@ class TestHealthView(TestCase):
 
     def test_health_gera_identificador_de_correlacao(self) -> None:
         """Gera e devolve um identificador quando o cliente não o envia."""
-        response = APIClient().get("/api/v1/boletim/health/")
+        response = APIClient().get("/api/boletim/health/")
 
         request_id = response["X-Request-ID"]
         self.assertEqual(str(UUID(request_id)), request_id)
@@ -31,7 +31,7 @@ class TestHealthView(TestCase):
         request_id = "requisicao-boletim-123"
 
         response = APIClient().get(
-            "/api/v1/boletim/health/",
+            "/api/boletim/health/",
             HTTP_X_REQUEST_ID=request_id,
         )
 

@@ -26,46 +26,27 @@ DESCRICAO_MODALIDADES = (
 )
 
 
-class FiltrosBoletimSerializer(serializers.Serializer):
-    """Valida os filtros aceitos pela consulta de boletim."""
-
-    anoLetivo = serializers.IntegerField(min_value=2000)  # noqa: N815
-    dreCodigo = serializers.CharField(required=False)  # noqa: N815
-    ueCodigo = serializers.CharField(required=False)  # noqa: N815
-    semestre = serializers.IntegerField(
-        required=False,
-        min_value=0,
-        max_value=2,
-    )
-    turmaCodigo = serializers.CharField(required=False)  # noqa: N815
-    modalidade = serializers.ChoiceField(
-        required=False,
-        choices=MODALIDADES_CHOICES,
-        help_text=_DESCRICAO_CAMPO_MODALIDADE,
-    )
-    bimestre = serializers.IntegerField(
-        required=False,
-        min_value=1,
-        max_value=4,
-    )
-
-
 class FiltrosBoletinsSerializer(serializers.Serializer):
     """Valida os filtros da consulta coletiva de boletins."""
 
-    anoLetivo = serializers.IntegerField(min_value=2000)  # noqa: N815
-    dreCodigo = serializers.CharField()  # noqa: N815
-    ueCodigo = serializers.CharField()  # noqa: N815
+    ano_letivo = serializers.IntegerField(min_value=2000)
+    dre_codigo = serializers.CharField()
+    ue_codigo = serializers.CharField()
     semestre = serializers.IntegerField(min_value=0, max_value=2)
-    turmaCodigo = serializers.CharField(required=False)  # noqa: N815
+    turma_codigo = serializers.CharField(required=False)
     modalidade = serializers.ChoiceField(
         choices=MODALIDADES_CHOICES,
         help_text=_DESCRICAO_CAMPO_MODALIDADE,
     )
-    alunosCodigo = serializers.ListField(  # noqa: N815
+    alunos_codigo = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
         required=False,
         default=list,
+    )
+    considera_inativo = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Indica se estudantes inativos devem ser incluídos.",
     )
     bimestre = serializers.IntegerField(
         required=False,
@@ -77,7 +58,7 @@ class FiltrosBoletinsSerializer(serializers.Serializer):
 class FiltrosBoletinsPdfSerializer(FiltrosBoletinsSerializer):
     """Valida os filtros da geração coletiva de boletins em PDF."""
 
-    boletinsPorPagina = serializers.ChoiceField(  # noqa: N815
+    boletins_por_pagina = serializers.ChoiceField(
         choices=(1, 2, 6),
         default=2,
         help_text="Quantidade de boletins exibidos em cada página.",
@@ -100,6 +81,9 @@ class DadosAlunoBoletimSerializer(serializers.Serializer):
     turmaNome = serializers.CharField(source="turma_nome")  # noqa: N815
     ciclo = serializers.CharField(allow_null=True)
     alunoCodigo = serializers.IntegerField(source="aluno_codigo")  # noqa: N815
+    numeroChamada = serializers.CharField(  # noqa: N815
+        source="numero_chamada", allow_null=True, required=False
+    )
     alunoNome = serializers.CharField(  # noqa: N815
         source="aluno_nome", allow_null=True
     )

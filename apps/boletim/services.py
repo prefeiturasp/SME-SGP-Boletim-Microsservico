@@ -43,59 +43,6 @@ class BoletimService:
         """
         self._repository = repository or BoletimRepository()
 
-    def listar_por_aluno(
-        self,
-        aluno_codigo: int,
-        ano_letivo: int,
-        bimestre: int | None = None,
-        dre_codigo: str | None = None,
-        ue_codigo: str | None = None,
-        semestre: int | None = None,
-        turma_codigo: str | None = None,
-        modalidade: int | None = None,
-    ) -> dict[str, object]:
-        """Lista o boletim de um aluno no ano letivo informado.
-
-        Args:
-            aluno_codigo: Código do aluno no EOL.
-            ano_letivo: Ano letivo consultado.
-            bimestre: Bimestre opcional usado como filtro.
-            dre_codigo: Código opcional da DRE.
-            ue_codigo: Código opcional da unidade escolar.
-            semestre: Semestre opcional da turma.
-            turma_codigo: Código opcional da turma.
-            modalidade: Código opcional da modalidade.
-
-        Returns:
-            Registros consolidados do boletim.
-        """
-        registros = list(
-            self._repository.listar_por_aluno(
-                aluno_codigo=aluno_codigo,
-                ano_letivo=ano_letivo,
-                bimestre=None,
-                dre_codigo=dre_codigo,
-                ue_codigo=ue_codigo,
-                semestre=semestre,
-                turma_codigo=turma_codigo,
-                modalidade=modalidade,
-            )
-        )
-        if not registros:
-            return {"dados_aluno": None, "componentes": [], "regencias": []}
-
-        modelo_aluno = registros[0]
-        registros = self._filtrar_componentes_validos(registros)
-        if registros:
-            registros = self._completar_bimestres(registros)
-        if bimestre is not None:
-            registros = [
-                registro
-                for registro in registros
-                if registro.bimestre == bimestre
-            ]
-        return self._agrupar_resposta(modelo_aluno, registros)
-
     def listar_boletins(
         self,
         ano_letivo: int,
@@ -104,6 +51,7 @@ class BoletimService:
         semestre: int,
         modalidade: int,
         alunos_codigo: list[int],
+        considera_inativo: bool = False,
         turma_codigo: str | None = None,
         bimestre: int | None = None,
     ) -> list[dict[str, object]]:
@@ -116,6 +64,7 @@ class BoletimService:
             semestre: Semestre da turma.
             modalidade: Código da modalidade.
             alunos_codigo: Códigos dos alunos; vazio seleciona todos.
+            considera_inativo: Indica se estudantes inativos serão incluídos.
             turma_codigo: Código opcional da turma.
             bimestre: Bimestre opcional usado como filtro de exibição.
 
@@ -129,6 +78,7 @@ class BoletimService:
             semestre=semestre,
             modalidade=modalidade,
             alunos_codigo=alunos_codigo,
+            considera_inativo=considera_inativo,
             turma_codigo=turma_codigo,
         )
         grupos: dict[tuple[int, str], list[Boletim]] = {}
@@ -203,6 +153,7 @@ class BoletimService:
             "turma_nome": modelo_aluno.turma_nome,
             "ciclo": modelo_aluno.ciclo,
             "aluno_codigo": modelo_aluno.aluno_codigo,
+            "numero_chamada": modelo_aluno.numero_chamada,
             "aluno_nome": modelo_aluno.aluno_nome,
             "nome_social": modelo_aluno.nome_social,
         }

@@ -2,6 +2,7 @@
 
 from django.db.models import QuerySet
 
+from apps.boletim.constantes import CODIGO_SITUACAO_ALUNO_ATIVO
 from apps.boletim.models import Boletim
 
 _CAMPOS_BOLETIM = (
@@ -18,6 +19,8 @@ _CAMPOS_BOLETIM = (
     "turma_nome",
     "ciclo",
     "aluno_codigo",
+    "codigo_situacao_matricula",
+    "numero_chamada",
     "aluno_nome",
     "nome_social",
     "periodo_escolar_id",
@@ -73,55 +76,6 @@ _CAMPOS_BOLETIM = (
 class BoletimRepository:
     """Consulta a view materializada de boletim por meio do ORM."""
 
-    def listar_por_aluno(
-        self,
-        aluno_codigo: int,
-        ano_letivo: int,
-        bimestre: int | None = None,
-        dre_codigo: str | None = None,
-        ue_codigo: str | None = None,
-        semestre: int | None = None,
-        turma_codigo: str | None = None,
-        modalidade: int | None = None,
-    ) -> QuerySet[Boletim]:
-        """Lista o boletim consolidado de um aluno.
-
-        Args:
-            aluno_codigo: Código do aluno no EOL.
-            ano_letivo: Ano letivo consultado.
-            bimestre: Bimestre opcional usado para restringir o resultado.
-            dre_codigo: Código opcional da DRE.
-            ue_codigo: Código opcional da unidade escolar.
-            semestre: Semestre opcional da turma.
-            turma_codigo: Código opcional da turma.
-            modalidade: Código opcional da modalidade.
-
-        Returns:
-            Consulta ordenada pelos períodos e componentes do boletim.
-        """
-        filtros: dict[str, int | str] = {
-            "aluno_codigo": aluno_codigo,
-            "ano_letivo": ano_letivo,
-        }
-        if bimestre is not None:
-            filtros["bimestre"] = bimestre
-        if dre_codigo is not None:
-            filtros["dre_codigo"] = dre_codigo
-        if ue_codigo is not None:
-            filtros["ue_codigo"] = ue_codigo
-        if semestre is not None:
-            filtros["semestre"] = semestre
-        if turma_codigo is not None:
-            filtros["turma_codigo"] = turma_codigo
-        if modalidade is not None:
-            filtros["modalidade_codigo"] = modalidade
-
-        return (
-            Boletim.objects.filter(**filtros)
-            .only(*_CAMPOS_BOLETIM)
-            .order_by("bimestre", "disciplina_nome_sgp", "componente_codigo")
-        )
-
     def listar_boletins(
         self,
         ano_letivo: int,
@@ -130,6 +84,7 @@ class BoletimRepository:
         semestre: int,
         modalidade: int,
         alunos_codigo: list[int],
+        considera_inativo: bool,
         turma_codigo: str | None = None,
     ) -> QuerySet[Boletim]:
         """Lista boletins de vários alunos no contexto informado.
@@ -141,12 +96,13 @@ class BoletimRepository:
             semestre: Semestre da turma.
             modalidade: Código da modalidade.
             alunos_codigo: Códigos dos alunos; vazio seleciona todos.
+            considera_inativo: Indica se estudantes inativos serão incluídos.
             turma_codigo: Código opcional da turma.
 
         Returns:
             Consulta ordenada por aluno, turma, período e componente.
         """
-        filtros: dict[str, int | str] = {
+        filtros: dict[str, int | str | tuple[int, ...]] = {
             "ano_letivo": ano_letivo,
             "dre_codigo": dre_codigo,
             "ue_codigo": ue_codigo,
@@ -155,6 +111,10 @@ class BoletimRepository:
         }
         if turma_codigo is not None:
             filtros["turma_codigo"] = turma_codigo
+        if not considera_inativo:
+            filtros["codigo_situacao_matricula__in"] = (
+                CODIGO_SITUACAO_ALUNO_ATIVO
+            )
 
         consulta = Boletim.objects.filter(**filtros)
         if alunos_codigo:

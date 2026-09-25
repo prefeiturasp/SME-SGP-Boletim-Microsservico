@@ -8,9 +8,8 @@ from rest_framework.test import APIClient
 
 from apps.boletim.serializers import MODALIDADES_CHOICES
 
-_URL = "/api/v1/boletim/alunos/123/"
-_URL_COLETIVA = "/api/v1/boletim/"
-_URL_PDF = "/api/v1/boletim/pdf/"
+_URL_COLETIVA = "/api/boletim/"
+_URL_PDF = "/api/boletim/pdf/"
 
 
 def _cliente_autenticado() -> APIClient:
@@ -19,130 +18,6 @@ def _cliente_autenticado() -> APIClient:
     header = "HTTP_" + settings.API_KEY_HEADER.upper().replace("-", "_")
     client.credentials(**{header: settings.API_KEY})
     return client
-
-
-class TestBoletimAlunoView(TestCase):
-    """Valida o contrato HTTP da consulta por aluno."""
-
-    def setUp(self) -> None:
-        """Prepara um cliente autenticado para os testes."""
-        self.client = _cliente_autenticado()
-
-    def test_exige_ano_letivo(self) -> None:
-        """Retorna HTTP 400 quando o ano letivo não é informado."""
-        response = self.client.get(_URL)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("anoLetivo", response.json())
-
-    def test_rejeita_bimestre_nao_positivo(self) -> None:
-        """Retorna HTTP 400 quando o bimestre não é positivo."""
-        response = self.client.get(_URL, {"anoLetivo": 2026, "bimestre": 0})
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("bimestre", response.json())
-
-    def test_rejeita_bimestre_maior_que_quatro(self) -> None:
-        """Retorna HTTP 400 quando o bimestre excede o ano letivo."""
-        response = self.client.get(_URL, {"anoLetivo": 2026, "bimestre": 5})
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("bimestre", response.json())
-
-    @patch("apps.boletim.api.views.BoletimService")
-    def test_retorna_resultado_do_servico(self, service_class) -> None:
-        """Retorna HTTP 200 e encaminha os filtros validados."""
-        service = service_class.return_value
-        service.listar_por_aluno.return_value = {
-            "dados_aluno": None,
-            "componentes": [],
-            "regencias": [],
-        }
-
-        response = self.client.get(_URL, {"anoLetivo": 2026, "bimestre": 4})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
-            {"dadosAluno": None, "componentes": [], "regencias": []},
-        )
-        service.listar_por_aluno.assert_called_once_with(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            bimestre=4,
-            dre_codigo=None,
-            ue_codigo=None,
-            semestre=None,
-            turma_codigo=None,
-            modalidade=None,
-        )
-
-    @patch("apps.boletim.api.views.BoletimService")
-    def test_encaminha_parametros_do_servidor_de_relatorios(
-        self, service_class
-    ) -> None:
-        """Encaminha os filtros de contexto do boletim ao serviço."""
-        service = service_class.return_value
-        service.listar_por_aluno.return_value = {
-            "dados_aluno": None,
-            "componentes": [],
-            "regencias": [],
-        }
-
-        response = self.client.get(
-            _URL,
-            {
-                "anoLetivo": 2026,
-                "dreCodigo": "108200",
-                "ueCodigo": "094501",
-                "semestre": 1,
-                "turmaCodigo": "1234567",
-                "modalidade": 5,
-            },
-        )
-
-        self.assertEqual(response.status_code, 200)
-        service.listar_por_aluno.assert_called_once_with(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            bimestre=None,
-            dre_codigo="108200",
-            ue_codigo="094501",
-            semestre=1,
-            turma_codigo="1234567",
-            modalidade=5,
-        )
-
-    def test_rejeita_modalidade_desconhecida(self) -> None:
-        """Retorna HTTP 400 para modalidade não suportada."""
-        response = self.client.get(
-            _URL,
-            {"anoLetivo": 2026, "modalidade": 2},
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("modalidade", response.json())
-
-    @patch("apps.boletim.api.views.BoletimService")
-    def test_aceita_semestre_zero(self, service_class) -> None:
-        """Aceita semestre zero quando não se aplica à modalidade."""
-        service = service_class.return_value
-        service.listar_por_aluno.return_value = {
-            "dados_aluno": None,
-            "componentes": [],
-            "regencias": [],
-        }
-
-        response = self.client.get(
-            _URL,
-            {"anoLetivo": 2026, "semestre": 0},
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            service.listar_por_aluno.call_args.kwargs["semestre"], 0
-        )
-
-    def test_exige_api_key(self) -> None:
-        """Retorna HTTP 401 quando a API key não é enviada."""
-        response = APIClient().get(_URL, {"anoLetivo": 2026})
-        self.assertEqual(response.status_code, 401)
 
 
 class TestBoletinsView(TestCase):
@@ -161,13 +36,13 @@ class TestBoletinsView(TestCase):
         response = self.client.get(
             _URL_COLETIVA,
             {
-                "anoLetivo": 2026,
-                "dreCodigo": "108200",
-                "ueCodigo": "094501",
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
                 "semestre": 1,
                 "modalidade": 5,
-                "turmaCodigo": "1234567",
-                "alunosCodigo": [123, 456],
+                "turma_codigo": "1234567",
+                "alunos_codigo": [123, 456],
             },
         )
 
@@ -180,6 +55,7 @@ class TestBoletinsView(TestCase):
             semestre=1,
             modalidade=5,
             alunos_codigo=[123, 456],
+            considera_inativo=False,
             turma_codigo="1234567",
             bimestre=None,
         )
@@ -193,9 +69,9 @@ class TestBoletinsView(TestCase):
         response = self.client.get(
             _URL_COLETIVA,
             {
-                "anoLetivo": 2026,
-                "dreCodigo": "108200",
-                "ueCodigo": "094501",
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
                 "semestre": 1,
                 "modalidade": 5,
             },
@@ -206,13 +82,36 @@ class TestBoletinsView(TestCase):
             service.listar_boletins.call_args.kwargs["alunos_codigo"], []
         )
 
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_permite_incluir_estudantes_inativos(self, service_class) -> None:
+        """Encaminha a opção de imprimir estudantes inativos."""
+        service = service_class.return_value
+        service.listar_boletins.return_value = []
+
+        response = self.client.get(
+            _URL_COLETIVA,
+            {
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
+                "semestre": 1,
+                "modalidade": 5,
+                "considera_inativo": True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            service.listar_boletins.call_args.kwargs["considera_inativo"]
+        )
+
     def test_exige_contexto_da_consulta(self) -> None:
         """Retorna HTTP 400 quando os filtros de contexto estão ausentes."""
-        response = self.client.get(_URL_COLETIVA, {"anoLetivo": 2026})
+        response = self.client.get(_URL_COLETIVA, {"ano_letivo": 2026})
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("dreCodigo", response.json())
-        self.assertIn("ueCodigo", response.json())
+        self.assertIn("dre_codigo", response.json())
+        self.assertIn("ue_codigo", response.json())
         self.assertIn("semestre", response.json())
         self.assertIn("modalidade", response.json())
 
@@ -225,9 +124,9 @@ class TestBoletinsView(TestCase):
         response = self.client.get(
             _URL_COLETIVA,
             {
-                "anoLetivo": 2026,
-                "dreCodigo": "108200",
-                "ueCodigo": "094501",
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
                 "semestre": 0,
                 "modalidade": 5,
             },
@@ -272,20 +171,40 @@ class TestBoletinsPdfView(TestCase):
     def test_rejeita_quantidade_de_boletins_nao_suportada(self) -> None:
         """Retorna HTTP 400 quando a paginação não é 1, 2 ou 6."""
         filtros = self._filtros()
-        filtros["boletinsPorPagina"] = 4
+        filtros["boletins_por_pagina"] = 4
 
         response = self.client.get(_URL_PDF, filtros)
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("boletinsPorPagina", response.json())
+        self.assertIn("boletins_por_pagina", response.json())
+
+    @patch("apps.boletim.api.views.GeradorBoletinsPdf")
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_pdf_permite_incluir_estudantes_inativos(
+        self, service_class, gerador_class
+    ) -> None:
+        """Encaminha estudantes inativos para a consulta do PDF."""
+        service_class.return_value.listar_boletins.return_value = []
+        gerador_class.return_value.gerar.return_value = b"%PDF-teste"
+        filtros = self._filtros()
+        filtros["considera_inativo"] = True
+
+        response = self.client.get(_URL_PDF, filtros)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            service_class.return_value.listar_boletins.call_args.kwargs[
+                "considera_inativo"
+            ]
+        )
 
     @staticmethod
     def _filtros() -> dict[str, int | str]:
         """Retorna os filtros mínimos aceitos pelo endpoint PDF."""
         return {
-            "anoLetivo": 2026,
-            "dreCodigo": "108200",
-            "ueCodigo": "094501",
+            "ano_letivo": 2026,
+            "dre_codigo": "108200",
+            "ue_codigo": "094501",
             "semestre": 1,
             "modalidade": 5,
         }
@@ -294,19 +213,58 @@ class TestBoletinsPdfView(TestCase):
 class TestDocumentacaoBoletim(TestCase):
     """Valida a documentação OpenAPI do boletim."""
 
+    def test_documenta_query_parameters_em_snake_case(self) -> None:
+        """Publica somente nomes em snake case nos filtros dos endpoints."""
+        response = APIClient().get(
+            "/boletim/api/schema/",
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        schema = response.json()
+        esperados_por_caminho = {
+            "/api/boletim/": {
+                "ano_letivo",
+                "dre_codigo",
+                "ue_codigo",
+                "semestre",
+                "turma_codigo",
+                "modalidade",
+                "alunos_codigo",
+                "considera_inativo",
+                "bimestre",
+            },
+            "/api/boletim/pdf/": {
+                "ano_letivo",
+                "dre_codigo",
+                "ue_codigo",
+                "semestre",
+                "turma_codigo",
+                "modalidade",
+                "alunos_codigo",
+                "considera_inativo",
+                "bimestre",
+                "boletins_por_pagina",
+            },
+        }
+        for caminho, esperados in esperados_por_caminho.items():
+            parametros = schema["paths"][caminho]["get"]["parameters"]
+            nomes = {parametro["name"] for parametro in parametros}
+
+            self.assertEqual(nomes, esperados)
+
     def test_descreve_enum_modalidade_nos_endpoints(self) -> None:
         """Documenta nomes e siglas de todas as modalidades aceitas."""
         response = APIClient().get(
-            "/boletim/api/v1/schema/",
+            "/boletim/api/schema/",
             HTTP_ACCEPT="application/json",
         )
 
         self.assertEqual(response.status_code, 200)
         schema = response.json()
         for caminho in (
-            "/api/v1/boletim/",
-            "/api/v1/boletim/pdf/",
-            "/api/v1/boletim/alunos/{aluno_codigo}/",
+            "/api/boletim/",
+            "/api/boletim/pdf/",
         ):
             parametros = schema["paths"][caminho]["get"]["parameters"]
             modalidade = next(
@@ -319,3 +277,16 @@ class TestDocumentacaoBoletim(TestCase):
                     f"`{codigo}` - {descricao}",
                     modalidade["description"],
                 )
+
+
+class TestEndpointAlunoRemovido(TestCase):
+    """Valida a remoção da consulta individual de boletim."""
+
+    def test_rota_individual_nao_existe(self) -> None:
+        """Retorna HTTP 404 para o endpoint individual removido."""
+        response = _cliente_autenticado().get(
+            "/api/boletim/alunos/123/",
+            {"ano_letivo": 2026},
+        )
+
+        self.assertEqual(response.status_code, 404)

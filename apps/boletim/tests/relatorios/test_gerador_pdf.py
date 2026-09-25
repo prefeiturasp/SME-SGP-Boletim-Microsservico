@@ -48,7 +48,7 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
     ) -> None:
         """Divide documentos grandes em lotes de até 20 páginas.
 
-        Turmas grandes ou consultas sem `turmaCodigo` geram muitas páginas;
+        Turmas grandes ou consultas sem `turma_codigo` geram muitas páginas;
         renderizar tudo em um processo só não aproveita os núcleos
         disponíveis, então lotes acima do primeiro são despachados para
         `_renderizar_lotes_em_paralelo` e depois mesclados em bytes.
@@ -143,6 +143,7 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
         self.assertIn("padding-left: 10px", html)
         self.assertIn('<div class="linha">', html)
         self.assertIn("height: 9cm", html)
+        self.assertIn(".por-1 .centro-valor", html)
         self.assertNotIn("overflow: hidden", html)
         self.assertIn("<p>Teste</p>", html)
         self.assertNotIn('<td width="10%"></td>', html)

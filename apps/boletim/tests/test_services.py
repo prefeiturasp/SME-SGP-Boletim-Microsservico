@@ -12,58 +12,6 @@ from apps.boletim.services import BoletimService
 class TestBoletimService(SimpleTestCase):
     """Valida a orquestração das consultas de boletim."""
 
-    def test_consulta_todos_os_bimestres_antes_de_aplicar_filtro(self) -> None:
-        """Consulta o ano completo para preencher períodos vazios."""
-        repository = MagicMock()
-        repository.listar_por_aluno.return_value = []
-
-        resultado = BoletimService(repository).listar_por_aluno(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            bimestre=4,
-        )
-
-        repository.listar_por_aluno.assert_called_once_with(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            bimestre=None,
-            dre_codigo=None,
-            ue_codigo=None,
-            semestre=None,
-            turma_codigo=None,
-            modalidade=None,
-        )
-        self.assertEqual(
-            resultado,
-            {"dados_aluno": None, "componentes": [], "regencias": []},
-        )
-
-    def test_encaminha_filtros_de_contexto_ao_repositorio(self) -> None:
-        """Restringe a consulta ao contexto informado do boletim."""
-        repository = MagicMock()
-        repository.listar_por_aluno.return_value = []
-
-        BoletimService(repository).listar_por_aluno(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            dre_codigo="108200",
-            ue_codigo="094501",
-            semestre=1,
-            turma_codigo="1234567",
-            modalidade=5,
-        )
-
-        repository.listar_por_aluno.assert_called_once_with(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            bimestre=None,
-            dre_codigo="108200",
-            ue_codigo="094501",
-            semestre=1,
-            turma_codigo="1234567",
-            modalidade=5,
-        )
-
     def test_lista_boletins_agrupados_por_aluno(self) -> None:
         """Monta um boletim independente para cada aluno selecionado."""
         primeiro = self._registro(modalidade=5, bimestre=1)
@@ -94,6 +42,7 @@ class TestBoletimService(SimpleTestCase):
             semestre=1,
             modalidade=5,
             alunos_codigo=[123, 456],
+            considera_inativo=False,
             turma_codigo=None,
         )
 
@@ -121,11 +70,12 @@ class TestBoletimService(SimpleTestCase):
         registro.disciplina_nome = None
         registro.disciplina_nome_sgp = None
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [registro]
+        repository.listar_boletins.return_value = [registro]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         self.assertEqual(resultado["dados_aluno"]["aluno_codigo"], 123)
+        self.assertEqual(resultado["dados_aluno"]["numero_chamada"], "7")
         self.assertEqual(
             resultado["dados_aluno"]["ciclo"],
             "Ciclo Interdisciplinar",
@@ -160,11 +110,11 @@ class TestBoletimService(SimpleTestCase):
     def test_completa_quatro_bimestres_para_modalidade_anual(self) -> None:
         """Inclui períodos vazios para uma modalidade anual."""
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [
+        repository.listar_boletins.return_value = [
             self._registro(modalidade=5, bimestre=1)
         ]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         componentes = resultado["componentes"]
         self.assertIsInstance(componentes, list)
@@ -188,6 +138,7 @@ class TestBoletimService(SimpleTestCase):
         self.assertFalse(bimestres[1]["conselho_classe_cadastrado"])
 
         resposta = BoletimAlunoResponseSerializer(resultado).data
+        self.assertEqual(resposta["dadosAluno"]["numeroChamada"], "7")
         self.assertEqual(resposta["componentes"][0]["componentePaiCodigo"], 2)
         self.assertFalse(resposta["componentes"][0]["regencia"])
         self.assertEqual(
@@ -204,13 +155,13 @@ class TestBoletimService(SimpleTestCase):
         for modalidade in (3, 10):
             with self.subTest(modalidade=modalidade):
                 repository = MagicMock()
-                repository.listar_por_aluno.return_value = [
+                repository.listar_boletins.return_value = [
                     self._registro(modalidade=modalidade, bimestre=1)
                 ]
 
-                resultado = BoletimService(repository).listar_por_aluno(
-                    123,
-                    2026,
+                resultado = self._listar_primeiro(
+                    repository,
+                    modalidade=modalidade,
                 )
 
                 componentes = resultado["componentes"]
@@ -237,9 +188,9 @@ class TestBoletimService(SimpleTestCase):
         registro.total_remotos = 3
         registro.origem_frequencia = "COMPONENTE"
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [registro]
+        repository.listar_boletins.return_value = [registro]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         bimestre = resultado["componentes"][0]["bimestres"][0]
         self.assertFalse(bimestre["conselho_classe_cadastrado"])
@@ -262,11 +213,11 @@ class TestBoletimService(SimpleTestCase):
     ) -> None:
         """Remove períodos que não são exibidos no boletim semestral."""
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [
+        repository.listar_boletins.return_value = [
             self._registro(modalidade=3, bimestre=3)
         ]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         componentes = resultado["componentes"]
         self.assertIsInstance(componentes, list)
@@ -278,15 +229,11 @@ class TestBoletimService(SimpleTestCase):
     def test_filtra_apos_completar_bimestre_sem_dados(self) -> None:
         """Retorna o bimestre solicitado mesmo quando não havia dados."""
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [
+        repository.listar_boletins.return_value = [
             self._registro(modalidade=5, bimestre=1)
         ]
 
-        resultado = BoletimService(repository).listar_por_aluno(
-            123,
-            2026,
-            bimestre=3,
-        )
+        resultado = self._listar_primeiro(repository, bimestre=3)
 
         componentes = resultado["componentes"]
         self.assertIsInstance(componentes, list)
@@ -311,9 +258,9 @@ class TestBoletimService(SimpleTestCase):
         segundo.disciplina_nome = "CiÃªncias"
         segundo.disciplina_nome_sgp = "CiÃªncias"
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [primeiro, segundo]
+        repository.listar_boletins.return_value = [primeiro, segundo]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         self.assertEqual(resultado["componentes"], [])
         regencia = resultado["regencias"][0]
@@ -394,9 +341,9 @@ class TestBoletimService(SimpleTestCase):
         registro.registra_frequencia = False
         registro.total_aulas = 20
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [registro]
+        repository.listar_boletins.return_value = [registro]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         bimestre = resultado["componentes"][0]["bimestres"][0]
         self.assertIsNone(bimestre["nota"])
@@ -412,9 +359,9 @@ class TestBoletimService(SimpleTestCase):
         registro.total_compensacoes = 0
         registro.media_frequencia = 75
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [registro]
+        repository.listar_boletins.return_value = [registro]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         final = resultado["componentes"][0]["bimestres"][0]
         self.assertEqual(final["bimestre"], 0)
@@ -430,9 +377,9 @@ class TestBoletimService(SimpleTestCase):
         registro.total_compensacoes = 0
         registro.media_frequencia = 75
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [registro]
+        repository.listar_boletins.return_value = [registro]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         final = resultado["componentes"][0]["bimestres"][0]
         self.assertIsNone(final["bimestre"])
@@ -446,12 +393,29 @@ class TestBoletimService(SimpleTestCase):
         registro.total_ausencias = None
         registro.media_frequencia = 75
         repository = MagicMock()
-        repository.listar_por_aluno.return_value = [registro]
+        repository.listar_boletins.return_value = [registro]
 
-        resultado = BoletimService(repository).listar_por_aluno(123, 2026)
+        resultado = self._listar_primeiro(repository)
 
         final = resultado["componentes"][0]["bimestres"][0]
         self.assertEqual(final["sintese"], "F")
+
+    @staticmethod
+    def _listar_primeiro(
+        repository: MagicMock,
+        bimestre: int | None = None,
+        modalidade: int = 5,
+    ) -> dict[str, object]:
+        """Executa a consulta coletiva e retorna o primeiro boletim."""
+        return BoletimService(repository).listar_boletins(
+            ano_letivo=2026,
+            dre_codigo="1",
+            ue_codigo="2",
+            semestre=1,
+            modalidade=modalidade,
+            alunos_codigo=[123],
+            bimestre=bimestre,
+        )[0]
 
     @staticmethod
     def _registro(modalidade: int, bimestre: int) -> Boletim:
@@ -466,6 +430,8 @@ class TestBoletimService(SimpleTestCase):
         """
         return Boletim(
             aluno_codigo=123,
+            codigo_situacao_matricula=1,
+            numero_chamada="7",
             ano_letivo=2026,
             modalidade_codigo=modalidade,
             semestre=1,

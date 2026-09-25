@@ -147,9 +147,7 @@ def _formatar_boletim(
 
     return {
         "dados": dados,
-        "nome_aluno": dados.get("nome_social")
-        or dados.get("aluno_nome")
-        or "",
+        "nome_aluno": _formatar_nome_aluno(dados),
         "periodos": periodos,
         "possui_nota_final": possui_nota_final,
         "usa_conceito": usa_conceito,
@@ -168,6 +166,17 @@ def _formatar_boletim(
         ),
         "exibe_recomendacoes": boletins_por_pagina == 1,
     }
+
+
+def _formatar_nome_aluno(dados: Mapping[str, object]) -> str:
+    """Antecede o nome do aluno pelo número de chamada, quando informado."""
+    nome = str(dados.get("nome_social") or dados.get("aluno_nome") or "")
+    numero = str(dados.get("numero_chamada") or "").strip()
+    if not numero:
+        return nome
+
+    numero_formatado = str(int(numero)) if numero.isdigit() else numero
+    return f"{numero_formatado} - {nome}"
 
 
 def _primeiro_texto(

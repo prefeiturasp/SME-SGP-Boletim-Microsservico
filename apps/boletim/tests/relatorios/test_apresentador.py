@@ -67,6 +67,25 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
 
         self.assertEqual(item["dados"]["ciclo"], "Ciclo Interdisciplinar")
 
+    def test_exibe_numero_chamada_antes_do_nome(self) -> None:
+        """Segue o formato usado pelo servidor de relatórios."""
+        boletim = self._boletim(1)
+        boletim["dados_aluno"]["numero_chamada"] = "007"
+
+        contexto = montar_contexto_pdf([boletim], 1)
+
+        item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
+        self.assertEqual(item["nome_aluno"], "7 - Aluno 1")
+
+    def test_exibe_apenas_nome_sem_numero_chamada(self) -> None:
+        """Mantém o cabeçalho válido para matrículas sem número de chamada."""
+        boletim = self._boletim(1)
+
+        contexto = montar_contexto_pdf([boletim], 1)
+
+        item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
+        self.assertEqual(item["nome_aluno"], "Aluno 1")
+
     def test_esconde_coluna_final_sem_nota_final(self) -> None:
         """Omite o par de colunas Final quando ninguém tem nota final."""
         boletim = self._boletim(1)

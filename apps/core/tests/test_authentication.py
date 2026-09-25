@@ -18,13 +18,13 @@ class TestApiKeyAuthentication(SimpleTestCase):
 
     def test_sem_chave_nao_autentica(self) -> None:
         """Retorna None quando o consumidor não informa a chave."""
-        request = self.factory.get("/api/v1/boletim/recurso/")
+        request = self.factory.get("/api/boletim/recurso/")
         self.assertIsNone(self.authentication.authenticate(request))
 
     def test_chave_invalida_e_rejeitada(self) -> None:
         """Rejeita uma chave diferente da configuração."""
         request = self.factory.get(
-            "/api/v1/boletim/recurso/", HTTP_X_API_KEY="incorreta"
+            "/api/boletim/recurso/", HTTP_X_API_KEY="incorreta"
         )
         with self.assertRaises(AuthenticationFailed):
             self.authentication.authenticate(request)
@@ -32,7 +32,7 @@ class TestApiKeyAuthentication(SimpleTestCase):
     def test_chave_valida_autentica(self) -> None:
         """Retorna o consumidor quando a chave coincide."""
         request = self.factory.get(
-            "/api/v1/boletim/recurso/", HTTP_X_API_KEY="chave-valida"
+            "/api/boletim/recurso/", HTTP_X_API_KEY="chave-valida"
         )
         result = self.authentication.authenticate(request)
         self.assertIsNotNone(result)

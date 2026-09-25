@@ -4,87 +4,12 @@ from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase
 
+from apps.boletim.constantes import CODIGO_SITUACAO_ALUNO_ATIVO
 from apps.boletim.repository import BoletimRepository
 
 
 class TestBoletimRepository(SimpleTestCase):
     """Valida a composição das consultas ORM de boletim."""
-
-    @patch("apps.boletim.repository.Boletim.objects")
-    def test_lista_boletim_com_filtro_de_bimestre(
-        self, objects: MagicMock
-    ) -> None:
-        """Aplica aluno, ano e bimestre à consulta ORM."""
-        query = MagicMock()
-        objects.filter.return_value = query
-        query.only.return_value = query
-        query.order_by.return_value = query
-
-        resultado = BoletimRepository().listar_por_aluno(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            bimestre=1,
-        )
-
-        objects.filter.assert_called_once_with(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            bimestre=1,
-        )
-        query.only.assert_called_once()
-        query.order_by.assert_called_once_with(
-            "bimestre",
-            "disciplina_nome_sgp",
-            "componente_codigo",
-        )
-        self.assertIs(resultado, query)
-
-    @patch("apps.boletim.repository.Boletim.objects")
-    def test_lista_boletim_sem_filtro_de_bimestre(
-        self, objects: MagicMock
-    ) -> None:
-        """Não adiciona o bimestre quando o filtro não é informado."""
-        query = MagicMock()
-        objects.filter.return_value = query
-        query.only.return_value = query
-        query.order_by.return_value = query
-
-        BoletimRepository().listar_por_aluno(123, 2026)
-
-        objects.filter.assert_called_once_with(
-            aluno_codigo=123,
-            ano_letivo=2026,
-        )
-
-    @patch("apps.boletim.repository.Boletim.objects")
-    def test_lista_boletim_com_filtros_de_contexto(
-        self, objects: MagicMock
-    ) -> None:
-        """Aplica os identificadores usados pelo servidor de relatórios."""
-        query = MagicMock()
-        objects.filter.return_value = query
-        query.only.return_value = query
-        query.order_by.return_value = query
-
-        BoletimRepository().listar_por_aluno(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            dre_codigo="108200",
-            ue_codigo="094501",
-            semestre=1,
-            turma_codigo="1234567",
-            modalidade=5,
-        )
-
-        objects.filter.assert_called_once_with(
-            aluno_codigo=123,
-            ano_letivo=2026,
-            dre_codigo="108200",
-            ue_codigo="094501",
-            semestre=1,
-            turma_codigo="1234567",
-            modalidade_codigo=5,
-        )
 
     @patch("apps.boletim.repository.Boletim.objects")
     def test_lista_varios_alunos(self, objects: MagicMock) -> None:
@@ -102,6 +27,7 @@ class TestBoletimRepository(SimpleTestCase):
             semestre=1,
             modalidade=5,
             alunos_codigo=[123, 456],
+            considera_inativo=False,
             turma_codigo="1234567",
         )
 
@@ -112,6 +38,7 @@ class TestBoletimRepository(SimpleTestCase):
             semestre=1,
             modalidade_codigo=5,
             turma_codigo="1234567",
+            codigo_situacao_matricula__in=CODIGO_SITUACAO_ALUNO_ATIVO,
         )
         consulta.filter.assert_called_once_with(aluno_codigo__in=[123, 456])
 
@@ -132,6 +59,14 @@ class TestBoletimRepository(SimpleTestCase):
             semestre=1,
             modalidade=5,
             alunos_codigo=[],
+            considera_inativo=True,
         )
 
+        objects.filter.assert_called_once_with(
+            ano_letivo=2026,
+            dre_codigo="108200",
+            ue_codigo="094501",
+            semestre=1,
+            modalidade_codigo=5,
+        )
         consulta.filter.assert_not_called()
