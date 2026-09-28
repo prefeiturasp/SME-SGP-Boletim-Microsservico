@@ -3,13 +3,16 @@
 from django.http import HttpResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
+    OpenApiParameter,
     OpenApiResponse,
     extend_schema,
 )
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.status import HTTP_204_NO_CONTENT
 
+from apps.boletim.api.renderers import PdfRenderer
 from apps.boletim.constantes import MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS
 from apps.boletim.relatorios.gerador_pdf import GeradorBoletinsPdf
 from apps.boletim.serializers import (
@@ -20,6 +23,14 @@ from apps.boletim.serializers import (
 from apps.boletim.services import BoletimService
 from apps.core.views import BaseAPIView
 
+_CABECALHO_MENSAGEM_SEM_ALUNOS = OpenApiParameter(
+    name="X-Mensagem",
+    type=OpenApiTypes.STR,
+    location=OpenApiParameter.HEADER,
+    description="Informa que alunos da turma não foram encontrados.",
+    response=[204],
+)
+
 
 class BoletinsView(BaseAPIView):
     """Lista boletins consolidados de vários alunos."""
@@ -28,12 +39,7 @@ class BoletinsView(BaseAPIView):
         parameters=[FiltrosBoletinsSerializer],
         responses={
             200: BoletimAlunoResponseSerializer(many=True),
-            204: OpenApiResponse(
-                description=(
-                    "Nenhum aluno encontrado. A mensagem é retornada no "
-                    "cabeçalho `X-Mensagem`."
-                )
-            ),
+            204: OpenApiResponse(description="Nenhum aluno encontrado."),
         },
         operation_id="boletim_listar_varios_alunos",
         tags=["Boletim"],
@@ -71,10 +77,20 @@ class BoletinsView(BaseAPIView):
 class BoletinsPdfView(BaseAPIView):
     """Gera boletins escolares de vários alunos em PDF."""
 
+    renderer_classes = [JSONRenderer, PdfRenderer]
+
     @extend_schema(
-        parameters=[FiltrosBoletinsPdfSerializer],
+        parameters=[
+            FiltrosBoletinsPdfSerializer,
+            _CABECALHO_MENSAGEM_SEM_ALUNOS,
+            OpenApiParameter(
+                name="format",
+                location=OpenApiParameter.QUERY,
+                exclude=True,
+            ),
+        ],
         responses={
-            200: OpenApiResponse(
+            (200, "application/pdf"): OpenApiResponse(
                 response=OpenApiTypes.BINARY,
                 description="Arquivo PDF com os boletins selecionados.",
             ),

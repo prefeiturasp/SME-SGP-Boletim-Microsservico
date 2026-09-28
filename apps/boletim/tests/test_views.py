@@ -229,6 +229,37 @@ class TestBoletinsPdfView(TestCase):
 
     @patch("apps.boletim.api.views.GeradorBoletinsPdf")
     @patch("apps.boletim.api.views.BoletimService")
+    def test_negocia_pdf_solicitado_pelo_swagger(
+        self, service_class, gerador_class
+    ) -> None:
+        """Aceita o media type de PDF enviado pelo Swagger UI."""
+        service_class.return_value.listar_boletins.return_value = [_boletim()]
+        gerador_class.return_value.gerar.return_value = b"%PDF-teste"
+
+        response = self.client.get(
+            _URL_PDF,
+            self._filtros(),
+            HTTP_ACCEPT="application/pdf",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertEqual(response.content, b"%PDF-teste")
+
+    def test_mantem_erro_em_json_quando_swagger_solicita_pdf(self) -> None:
+        """Retorna validação em JSON mesmo sob negociação de PDF."""
+        response = self.client.get(
+            _URL_PDF,
+            {"ano_letivo": 2026},
+            HTTP_ACCEPT="application/pdf",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertIn("dre_codigo", response.json())
+
+    @patch("apps.boletim.api.views.GeradorBoletinsPdf")
+    @patch("apps.boletim.api.views.BoletimService")
     def test_pdf_permite_incluir_estudantes_inativos(
         self, service_class, gerador_class
     ) -> None:
@@ -344,6 +375,24 @@ class TestDocumentacaoBoletim(TestCase):
                     f"`{codigo}` - {descricao}",
                     modalidade["description"],
                 )
+
+    def test_documenta_respostas_do_endpoint_pdf(self) -> None:
+        """Documenta o PDF e a resposta sem conteúdo com sua mensagem."""
+        response = APIClient().get(
+            "/boletim/api/schema/",
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        respostas = response.json()["paths"]["/api/boletim/pdf/"]["get"][
+            "responses"
+        ]
+        self.assertIn("application/pdf", respostas["200"]["content"])
+        self.assertNotIn("content", respostas["204"])
+        self.assertEqual(
+            respostas["204"]["headers"]["X-Mensagem"]["schema"]["type"],
+            "string",
+        )
 
 
 class TestEndpointAlunoRemovido(TestCase):
