@@ -124,7 +124,7 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
                                     ],
                                     "exibe_legenda": False,
                                     "parecer_conclusivo": "",
-                                    "recomendacoes_aluno": "<p>Teste</p>",
+                                    "recomendacoes_aluno": "Teste",
                                     "recomendacoes_familia": "",
                                     "exibe_recomendacoes": True,
                                 }
@@ -158,7 +158,7 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
         self.assertIn('scope="row"', html)
         self.assertNotIn(' width="', html)
         self.assertNotIn("overflow: hidden", html)
-        self.assertIn("<p>Teste</p>", html)
+        self.assertIn("<td>Teste</td>", html)
         self.assertNotIn('<td width="10%"></td>', html)
 
 

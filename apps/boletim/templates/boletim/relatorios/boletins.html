@@ -163,8 +163,8 @@
     </tbody></table>{% endfor %}
     {% if boletim.exibe_legenda %}<p class="legenda">Legenda: F:Frequente - NF:Não Frequente - P:Plenamente Satisfatório - S:Satisfatório - NS:Não Satisfatório</p>{% endif %}
     {% if boletim.parecer_conclusivo %}<div class="tabela parecer margin-top">Parecer Conclusivo: {{ boletim.parecer_conclusivo }}</div>{% endif %}
-    {% if boletim.exibe_recomendacoes and boletim.recomendacoes_aluno %}<table class="tabela-recomendacoes"><tr><th scope="col" class="recomendacoes-titulo">Recomendações ao estudante</th></tr><tr><td>{{ boletim.recomendacoes_aluno|safe }}</td></tr></table>{% endif %}
-    {% if boletim.exibe_recomendacoes and boletim.recomendacoes_familia %}<table class="tabela-recomendacoes"><tr><th scope="col" class="recomendacoes-titulo">Recomendações a família</th></tr><tr><td>{{ boletim.recomendacoes_familia|safe }}</td></tr></table>{% endif %}
+    {% if boletim.exibe_recomendacoes and boletim.recomendacoes_aluno %}<table class="tabela-recomendacoes"><tr><th scope="col" class="recomendacoes-titulo">Recomendações ao estudante</th></tr><tr><td>{{ boletim.recomendacoes_aluno }}</td></tr></table>{% endif %}
+    {% if boletim.exibe_recomendacoes and boletim.recomendacoes_familia %}<table class="tabela-recomendacoes"><tr><th scope="col" class="recomendacoes-titulo">Recomendações a família</th></tr><tr><td>{{ boletim.recomendacoes_familia }}</td></tr></table>{% endif %}
     <div class="tabela-final"><div class="linha-assinatura">&nbsp;</div><div class="linha-assinatura">&nbsp;</div></div>
 </article>
 {% endfor %}</div>{% endfor %}

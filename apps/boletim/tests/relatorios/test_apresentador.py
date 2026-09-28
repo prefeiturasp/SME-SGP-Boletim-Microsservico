@@ -376,6 +376,22 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         self.assertEqual(item["recomendacoes_aluno"], "Estudar mais")
         self.assertEqual(item["recomendacoes_familia"], "Acompanhar tarefas")
 
+    def test_remove_html_das_recomendacoes(self) -> None:
+        """Converte recomendações HTML em texto seguro para o PDF."""
+        boletim = self._boletim(1)
+        boletim["componentes"][0]["bimestres"][0][
+            "recomendacoes_aluno"
+        ] = "<p>Estudar <strong>mais</strong></p><script>alert(1)</script>"
+        boletim["componentes"][0]["bimestres"][0][
+            "recomendacoes_familia"
+        ] = "<div>Acompanhar&nbsp;tarefas</div>"
+
+        contexto = montar_contexto_pdf([boletim], 1)
+
+        item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
+        self.assertEqual(item["recomendacoes_aluno"], "Estudar mais alert(1)")
+        self.assertEqual(item["recomendacoes_familia"], "Acompanhar tarefas")
+
     def test_exibe_recomendacoes_apenas_em_pagina_individual(self) -> None:
         """Replica a diferença entre os fluxos individual e coletivo."""
         boletim = self._boletim(1)

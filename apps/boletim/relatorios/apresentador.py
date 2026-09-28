@@ -1,10 +1,13 @@
 """Prepara os dados dos boletins para o template PDF."""
 
+import re
 from collections.abc import Mapping
 from decimal import Decimal
+from html import unescape
 from typing import TypedDict, cast
 
 from django.utils import timezone
+from django.utils.html import strip_tags
 
 from apps.boletim.constantes import (
     BIMESTRES_ANUAIS,
@@ -158,11 +161,11 @@ def _formatar_boletim(
         "parecer_conclusivo": _primeiro_texto(
             todos_bimestres, "parecer_conclusivo"
         ),
-        "recomendacoes_aluno": _primeiro_texto(
-            todos_bimestres, "recomendacoes_aluno"
+        "recomendacoes_aluno": _formatar_html_como_texto(
+            _primeiro_texto(todos_bimestres, "recomendacoes_aluno")
         ),
-        "recomendacoes_familia": _primeiro_texto(
-            todos_bimestres, "recomendacoes_familia"
+        "recomendacoes_familia": _formatar_html_como_texto(
+            _primeiro_texto(todos_bimestres, "recomendacoes_familia")
         ),
         "exibe_recomendacoes": boletins_por_pagina == 1,
     }
@@ -198,6 +201,24 @@ def _primeiro_texto(
             "",
         )
     )
+
+
+def _formatar_html_como_texto(valor: str) -> str:
+    """Remove marcação HTML de um texto exibido no relatório.
+
+    Args:
+        valor: Conteúdo textual possivelmente originado de um editor HTML.
+
+    Returns:
+        Texto sem tags, entidades HTML ou espaços excedentes.
+    """
+    com_separadores = re.sub(
+        r"</?(?:br|div|li|ol|p|ul)\b[^>]*>",
+        " ",
+        valor,
+        flags=re.IGNORECASE,
+    )
+    return " ".join(unescape(strip_tags(com_separadores)).split())
 
 
 def _agrupar_por_matriz(
