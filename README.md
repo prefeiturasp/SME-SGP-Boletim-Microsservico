@@ -1,1 +1,0 @@
-# SME-SGP-Boletim-Microsservico

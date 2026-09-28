@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Referência de código &#8212; SME SGP Boletim MS</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=2346ddef"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=71a39b36"></script>
+    <link rel="index" title="Índice" href="genindex.html" />
+    <link rel="search" title="Buscar" href="search.html" />
+    <link rel="prev" title="Documentação do SME SGP Boletim MS" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="referencia-de-codigo">
+<h1>Referência de código<a class="headerlink" href="#referencia-de-codigo" title="Link para este cabeçalho">¶</a></h1>
+<section id="module-apps.core.authentication">
+<span id="core"></span><h2>Core<a class="headerlink" href="#module-apps.core.authentication" title="Link para este cabeçalho">¶</a></h2>
+<p>Autenticação por API key.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.core.authentication.ApiKeyAuthentication">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.core.authentication.</span></span><span class="sig-name descname"><span class="pre">ApiKeyAuthentication</span></span><a class="reference internal" href="_modules/apps/core/authentication.html#ApiKeyAuthentication"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.core.authentication.ApiKeyAuthentication" title="Link para esta definição">¶</a></dt>
+<dd><p>Valida requisições com a API key configurada no ambiente.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.core.authentication.ApiKeyAuthentication.authenticate">
+<span class="sig-name descname"><span class="pre">authenticate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/core/authentication.html#ApiKeyAuthentication.authenticate"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.core.authentication.ApiKeyAuthentication.authenticate" title="Link para esta definição">¶</a></dt>
+<dd><p>Autentica a requisição ou rejeita uma chave inválida.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>)</p>
+</dd>
+<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[_ApiAuth, None] | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.core.authentication.ApiKeyAuthentication.authenticate_header">
+<span class="sig-name descname"><span class="pre">authenticate_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/core/authentication.html#ApiKeyAuthentication.authenticate_header"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.core.authentication.ApiKeyAuthentication.authenticate_header" title="Link para esta definição">¶</a></dt>
+<dd><p>Retorna o nome do header esperado para autenticação.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>)</p>
+</dd>
+<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-apps.core.models">Abstrações de models compartilhadas pelo microsserviço.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.core.models.ModeloBase">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.core.models.</span></span><span class="sig-name descname"><span class="pre">ModeloBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/core/models.html#ModeloBase"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.core.models.ModeloBase" title="Link para esta definição">¶</a></dt>
+<dd><p>Base abstrata para tabelas externas não gerenciadas pelo Django.</p>
+</dd></dl>
+
+<p id="module-apps.core.serializers">Contratos HTTP compartilhados pelo microsserviço.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.core.serializers.HealthSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.core.serializers.</span></span><span class="sig-name descname"><span class="pre">HealthSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/core/serializers.html#HealthSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.core.serializers.HealthSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Representa o estado básico da aplicação.</p>
+</dd></dl>
+
+<p id="module-apps.core.views">Views técnicas compartilhadas pelo microsserviço.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.core.views.BaseAPIView">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.core.views.</span></span><span class="sig-name descname"><span class="pre">BaseAPIView</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/core/views.html#BaseAPIView"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.core.views.BaseAPIView" title="Link para esta definição">¶</a></dt>
+<dd><p>Base autenticada para as views de negócio do microsserviço.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.core.views.HealthView">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.core.views.</span></span><span class="sig-name descname"><span class="pre">HealthView</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/core/views.html#HealthView"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.core.views.HealthView" title="Link para esta definição">¶</a></dt>
+<dd><p>Expõe o estado básico do processo sem consultar dependências.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.core.views.HealthView.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/core/views.html#HealthView.get"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.core.views.HealthView.get" title="Link para esta definição">¶</a></dt>
+<dd><p>Retorna sucesso quando o processo está apto a responder HTTP.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>_request</strong> (<em>Request</em>)</p>
+</dd>
+<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Response</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-apps.boletim.models">
+<span id="boletim"></span><h2>Boletim<a class="headerlink" href="#module-apps.boletim.models" title="Link para este cabeçalho">¶</a></h2>
+<p>Models de leitura do domínio de boletim.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.models.Boletim">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.models.</span></span><span class="sig-name descname"><span class="pre">Boletim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/models.html#Boletim"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.models.Boletim" title="Link para esta definição">¶</a></dt>
+<dd><p>Representa uma linha consolidada da view materializada de boletim.</p>
+<p><cite>aluno_codigo</cite> é usado como chave técnica somente para impedir que o
+Django procure uma coluna <cite>id</cite>. A granularidade real da view também inclui
+ano, período escolar e componente. O model é estritamente de leitura.</p>
+<dl class="py exception">
+<dt class="sig sig-object py" id="apps.boletim.models.Boletim.DoesNotExist">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#apps.boletim.models.Boletim.DoesNotExist" title="Link para esta definição">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="apps.boletim.models.Boletim.MultipleObjectsReturned">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#apps.boletim.models.Boletim.MultipleObjectsReturned" title="Link para esta definição">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<p id="module-apps.boletim.serializers">Serializers dos contratos HTTP de boletim.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.FiltrosBoletinsSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">FiltrosBoletinsSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#FiltrosBoletinsSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.FiltrosBoletinsSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Valida os filtros da consulta coletiva de boletins.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.FiltrosBoletinsPdfSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">FiltrosBoletinsPdfSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#FiltrosBoletinsPdfSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.FiltrosBoletinsPdfSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Valida os filtros da geração coletiva de boletins em PDF.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.DadosAlunoBoletimSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">DadosAlunoBoletimSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#DadosAlunoBoletimSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.DadosAlunoBoletimSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Serializa a identificação do aluno e de sua turma.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.BimestreComponenteSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">BimestreComponenteSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#BimestreComponenteSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.BimestreComponenteSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Serializa os dados acadêmicos de um componente no bimestre.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.ComponenteBoletimSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">ComponenteBoletimSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#ComponenteBoletimSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.ComponenteBoletimSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Serializa um componente e seus dados por bimestre.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.ComponenteRegenciaSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">ComponenteRegenciaSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#ComponenteRegenciaSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.ComponenteRegenciaSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Serializa uma disciplina filha da regÃªncia de classe.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.RegenciaBoletimSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">RegenciaBoletimSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#RegenciaBoletimSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.RegenciaBoletimSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Serializa a frequÃªncia comum e as disciplinas da regÃªncia.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.BoletimAlunoResponseSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">BoletimAlunoResponseSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#BoletimAlunoResponseSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.BoletimAlunoResponseSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Serializa o boletim hierárquico de um aluno.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.serializers.RegistroBoletimSerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.serializers.</span></span><span class="sig-name descname"><span class="pre">RegistroBoletimSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/serializers.html#RegistroBoletimSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.serializers.RegistroBoletimSerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Serializa uma linha consolidada do boletim escolar.</p>
+</dd></dl>
+
+<p id="module-apps.boletim.services">Casos de uso do domínio de boletim.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.services.BoletimService">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.services.</span></span><span class="sig-name descname"><span class="pre">BoletimService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/services.html#BoletimService"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.services.BoletimService" title="Link para esta definição">¶</a></dt>
+<dd><p>Orquestra consultas ao boletim consolidado.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>repository</strong> (<a class="reference internal" href="#apps.boletim.repository.BoletimRepository" title="apps.boletim.repository.BoletimRepository"><em>BoletimRepository</em></a><em> | </em><em>None</em>)</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.boletim.services.BoletimService.listar_boletins">
+<span class="sig-name descname"><span class="pre">listar_boletins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ano_letivo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dre_codigo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ue_codigo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">semestre</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modalidade</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alunos_codigo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">considera_inativo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">turma_codigo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bimestre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/services.html#BoletimService.listar_boletins"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.services.BoletimService.listar_boletins" title="Link para esta definição">¶</a></dt>
+<dd><p>Lista boletins de vários alunos no contexto informado.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ano_letivo</strong> (<em>int</em>) – Ano letivo consultado.</p></li>
+<li><p><strong>dre_codigo</strong> (<em>str</em>) – Código da DRE.</p></li>
+<li><p><strong>ue_codigo</strong> (<em>str</em>) – Código da unidade escolar.</p></li>
+<li><p><strong>semestre</strong> (<em>int</em>) – Semestre da turma.</p></li>
+<li><p><strong>modalidade</strong> (<em>int</em>) – Código da modalidade.</p></li>
+<li><p><strong>alunos_codigo</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>) – Códigos dos alunos; vazio seleciona todos.</p></li>
+<li><p><strong>considera_inativo</strong> (<em>bool</em>) – Indica se estudantes inativos serão incluídos.</p></li>
+<li><p><strong>turma_codigo</strong> (<em>str</em><em> | </em><em>None</em>) – Código opcional da turma.</p></li>
+<li><p><strong>bimestre</strong> (<em>int</em><em> | </em><em>None</em>) – Bimestre opcional usado como filtro de exibição.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Retorna<span class="colon">:</span></dt>
+<dd class="field-even"><p>Boletins agrupados por aluno e turma.</p>
+</dd>
+<dt class="field-odd">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[dict[str, object]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-apps.boletim.repository">Consultas ORM do domínio de boletim.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.repository.BoletimRepository">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.repository.</span></span><span class="sig-name descname"><span class="pre">BoletimRepository</span></span><a class="reference internal" href="_modules/apps/boletim/repository.html#BoletimRepository"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.repository.BoletimRepository" title="Link para esta definição">¶</a></dt>
+<dd><p>Consulta a view materializada de boletim por meio do ORM.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.boletim.repository.BoletimRepository.listar_boletins">
+<span class="sig-name descname"><span class="pre">listar_boletins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ano_letivo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dre_codigo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ue_codigo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">semestre</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modalidade</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alunos_codigo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">considera_inativo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">turma_codigo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/repository.html#BoletimRepository.listar_boletins"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.repository.BoletimRepository.listar_boletins" title="Link para esta definição">¶</a></dt>
+<dd><p>Lista boletins de vários alunos no contexto informado.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ano_letivo</strong> (<em>int</em>) – Ano letivo consultado.</p></li>
+<li><p><strong>dre_codigo</strong> (<em>str</em>) – Código da DRE.</p></li>
+<li><p><strong>ue_codigo</strong> (<em>str</em>) – Código da unidade escolar.</p></li>
+<li><p><strong>semestre</strong> (<em>int</em>) – Semestre da turma.</p></li>
+<li><p><strong>modalidade</strong> (<em>int</em>) – Código da modalidade.</p></li>
+<li><p><strong>alunos_codigo</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>) – Códigos dos alunos; vazio seleciona todos.</p></li>
+<li><p><strong>considera_inativo</strong> (<em>bool</em>) – Indica se estudantes inativos serão incluídos.</p></li>
+<li><p><strong>turma_codigo</strong> (<em>str</em><em> | </em><em>None</em>) – Código opcional da turma.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Retorna<span class="colon">:</span></dt>
+<dd class="field-even"><p>Consulta ordenada por aluno, turma, período e componente.</p>
+</dd>
+<dt class="field-odd">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>QuerySet</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-apps.boletim.api.views">Views do domínio de boletim.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.api.views.BoletinsView">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.api.views.</span></span><span class="sig-name descname"><span class="pre">BoletinsView</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/api/views.html#BoletinsView"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.api.views.BoletinsView" title="Link para esta definição">¶</a></dt>
+<dd><p>Lista boletins consolidados de vários alunos.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.boletim.api.views.BoletinsView.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/api/views.html#BoletinsView.get"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.api.views.BoletinsView.get" title="Link para esta definição">¶</a></dt>
+<dd><p>Retorna os boletins dos alunos selecionados.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>) – Requisição HTTP com os filtros da consulta.</p>
+</dd>
+<dt class="field-even">Retorna<span class="colon">:</span></dt>
+<dd class="field-even"><p>Lista de boletins agrupados por aluno e turma.</p>
+</dd>
+<dt class="field-odd">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Response</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.boletim.api.views.BoletinsPdfView">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.boletim.api.views.</span></span><span class="sig-name descname"><span class="pre">BoletinsPdfView</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/api/views.html#BoletinsPdfView"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.api.views.BoletinsPdfView" title="Link para esta definição">¶</a></dt>
+<dd><p>Gera boletins escolares de vários alunos em PDF.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.boletim.api.views.BoletinsPdfView.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/boletim/api/views.html#BoletinsPdfView.get"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.boletim.api.views.BoletinsPdfView.get" title="Link para esta definição">¶</a></dt>
+<dd><p>Retorna os boletins selecionados como um arquivo PDF.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>)</p>
+</dd>
+<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>HttpResponse</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">sme_sgp_boletim_ms</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Ir" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navegação</h3>
+<p class="caption" role="heading"><span class="caption-text">Referência</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Referência de código</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-apps.core.authentication">Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-apps.boletim.models">Boletim</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="capítulo anterior">Documentação do SME SGP Boletim MS</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/api.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

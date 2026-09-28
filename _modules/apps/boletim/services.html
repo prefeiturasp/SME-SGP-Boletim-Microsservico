@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>apps.boletim.services &#8212; SME SGP Boletim MS</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=2346ddef"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/translations.js?v=71a39b36"></script>
+    <link rel="index" title="Índice" href="../../../genindex.html" />
+    <link rel="search" title="Buscar" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Código-fonte para apps.boletim.services</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Casos de uso do domínio de boletim."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.boletim.constantes</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BIMESTRES_ANUAIS</span><span class="p">,</span>
+    <span class="n">BIMESTRES_SEMESTRAIS</span><span class="p">,</span>
+    <span class="n">MODALIDADES_SEMESTRAIS</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.boletim.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Boletim</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.boletim.repository</span><span class="w"> </span><span class="kn">import</span> <span class="n">BoletimRepository</span>
+
+<span class="n">_CAMPOS_SEM_DADOS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"periodo_escolar_id"</span><span class="p">,</span>
+    <span class="s2">"componente_existia_no_periodo"</span><span class="p">,</span>
+    <span class="s2">"nota"</span><span class="p">,</span>
+    <span class="s2">"conceito_id"</span><span class="p">,</span>
+    <span class="s2">"conceito"</span><span class="p">,</span>
+    <span class="s2">"total_aulas"</span><span class="p">,</span>
+    <span class="s2">"total_presencas"</span><span class="p">,</span>
+    <span class="s2">"total_ausencias"</span><span class="p">,</span>
+    <span class="s2">"total_compensacoes"</span><span class="p">,</span>
+    <span class="s2">"total_remotos"</span><span class="p">,</span>
+    <span class="s2">"total_aulas_global"</span><span class="p">,</span>
+    <span class="s2">"total_presencas_global"</span><span class="p">,</span>
+    <span class="s2">"total_ausencias_global"</span><span class="p">,</span>
+    <span class="s2">"total_compensacoes_global"</span><span class="p">,</span>
+    <span class="s2">"total_remotos_global"</span><span class="p">,</span>
+    <span class="s2">"origem_frequencia"</span><span class="p">,</span>
+    <span class="s2">"parecer_conclusivo"</span><span class="p">,</span>
+    <span class="s2">"recomendacoes_aluno"</span><span class="p">,</span>
+    <span class="s2">"recomendacoes_familia"</span><span class="p">,</span>
+    <span class="s2">"anotacoes_pedagogicas"</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="BoletimService">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.services.BoletimService">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BoletimService</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Orquestra consultas ao boletim consolidado."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">repository</span><span class="p">:</span> <span class="n">BoletimRepository</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Inicializa o serviço com seu repositório.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            repository: Repositório opcional para consulta dos dados.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_repository</span> <span class="o">=</span> <span class="n">repository</span> <span class="ow">or</span> <span class="n">BoletimRepository</span><span class="p">()</span>
+
+<div class="viewcode-block" id="BoletimService.listar_boletins">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.services.BoletimService.listar_boletins">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">listar_boletins</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">dre_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ue_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">semestre</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">modalidade</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">alunos_codigo</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">considera_inativo</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">turma_codigo</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bimestre</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""Lista boletins de vários alunos no contexto informado.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ano_letivo: Ano letivo consultado.</span>
+<span class="sd">            dre_codigo: Código da DRE.</span>
+<span class="sd">            ue_codigo: Código da unidade escolar.</span>
+<span class="sd">            semestre: Semestre da turma.</span>
+<span class="sd">            modalidade: Código da modalidade.</span>
+<span class="sd">            alunos_codigo: Códigos dos alunos; vazio seleciona todos.</span>
+<span class="sd">            considera_inativo: Indica se estudantes inativos serão incluídos.</span>
+<span class="sd">            turma_codigo: Código opcional da turma.</span>
+<span class="sd">            bimestre: Bimestre opcional usado como filtro de exibição.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Boletins agrupados por aluno e turma.</span>
+<span class="sd">        """</span>
+        <span class="n">registros</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repository</span><span class="o">.</span><span class="n">listar_boletins</span><span class="p">(</span>
+            <span class="n">ano_letivo</span><span class="o">=</span><span class="n">ano_letivo</span><span class="p">,</span>
+            <span class="n">dre_codigo</span><span class="o">=</span><span class="n">dre_codigo</span><span class="p">,</span>
+            <span class="n">ue_codigo</span><span class="o">=</span><span class="n">ue_codigo</span><span class="p">,</span>
+            <span class="n">semestre</span><span class="o">=</span><span class="n">semestre</span><span class="p">,</span>
+            <span class="n">modalidade</span><span class="o">=</span><span class="n">modalidade</span><span class="p">,</span>
+            <span class="n">alunos_codigo</span><span class="o">=</span><span class="n">alunos_codigo</span><span class="p">,</span>
+            <span class="n">considera_inativo</span><span class="o">=</span><span class="n">considera_inativo</span><span class="p">,</span>
+            <span class="n">turma_codigo</span><span class="o">=</span><span class="n">turma_codigo</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">grupos</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">registro</span> <span class="ow">in</span> <span class="n">registros</span><span class="p">:</span>
+            <span class="n">chave</span> <span class="o">=</span> <span class="p">(</span><span class="n">registro</span><span class="o">.</span><span class="n">aluno_codigo</span><span class="p">,</span> <span class="n">registro</span><span class="o">.</span><span class="n">turma_codigo</span><span class="p">)</span>
+            <span class="n">grupos</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">chave</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">registro</span><span class="p">)</span>
+
+        <span class="n">boletins</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">registros_aluno</span> <span class="ow">in</span> <span class="n">grupos</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">modelo_aluno</span> <span class="o">=</span> <span class="n">registros_aluno</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">registros_validos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filtrar_componentes_validos</span><span class="p">(</span>
+                <span class="n">registros_aluno</span>
+            <span class="p">)</span>
+            <span class="n">registros_completos</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_completar_bimestres</span><span class="p">(</span><span class="n">registros_validos</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">registros_validos</span>
+                <span class="k">else</span> <span class="p">[]</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">bimestre</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">registros_completos</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">registro</span>
+                    <span class="k">for</span> <span class="n">registro</span> <span class="ow">in</span> <span class="n">registros_completos</span>
+                    <span class="k">if</span> <span class="n">registro</span><span class="o">.</span><span class="n">bimestre</span> <span class="o">==</span> <span class="n">bimestre</span>
+                <span class="p">]</span>
+            <span class="n">boletins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_agrupar_resposta</span><span class="p">(</span><span class="n">modelo_aluno</span><span class="p">,</span> <span class="n">registros_completos</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">boletins</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_filtrar_componentes_validos</span><span class="p">(</span>
+        <span class="n">registros</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Remove linhas da base sem identificação de disciplina.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            registros: Linhas consolidadas do boletim do aluno.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Linhas que representam componentes curriculares identificados.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">registro</span>
+            <span class="k">for</span> <span class="n">registro</span> <span class="ow">in</span> <span class="n">registros</span>
+            <span class="k">if</span> <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">registro</span><span class="o">.</span><span class="n">disciplina_nome_sgp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">]</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_agrupar_resposta</span><span class="p">(</span>
+        <span class="n">modelo_aluno</span><span class="p">:</span> <span class="n">Boletim</span><span class="p">,</span>
+        <span class="n">registros</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Agrupa os dados do aluno, componentes e bimestres.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            modelo_aluno: Registro usado como fonte da identificação.</span>
+<span class="sd">            registros: Linhas do boletim já complementadas e filtradas.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Estrutura hierárquica do boletim do aluno.</span>
+<span class="sd">        """</span>
+        <span class="n">dados_aluno</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"ano_letivo"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">ano_letivo</span><span class="p">,</span>
+            <span class="s2">"modalidade_codigo"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">modalidade_codigo</span><span class="p">,</span>
+            <span class="s2">"semestre"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">semestre</span><span class="p">,</span>
+            <span class="s2">"dre_codigo"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">dre_codigo</span><span class="p">,</span>
+            <span class="s2">"dre_nome"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">dre_nome</span><span class="p">,</span>
+            <span class="s2">"ue_codigo"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">ue_codigo</span><span class="p">,</span>
+            <span class="s2">"ue_nome"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">ue_nome</span><span class="p">,</span>
+            <span class="s2">"turma_codigo"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">turma_codigo</span><span class="p">,</span>
+            <span class="s2">"turma_nome"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">turma_nome</span><span class="p">,</span>
+            <span class="s2">"ciclo"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">ciclo</span><span class="p">,</span>
+            <span class="s2">"aluno_codigo"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">aluno_codigo</span><span class="p">,</span>
+            <span class="s2">"numero_chamada"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">numero_chamada</span><span class="p">,</span>
+            <span class="s2">"aluno_nome"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">aluno_nome</span><span class="p">,</span>
+            <span class="s2">"nome_social"</span><span class="p">:</span> <span class="n">modelo_aluno</span><span class="o">.</span><span class="n">nome_social</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">componentes_por_chave</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
+            <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">regencias_por_codigo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
+            <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">registros_por_componente</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">BoletimService</span><span class="o">.</span><span class="n">_indexar_registros_por_componente</span><span class="p">(</span><span class="n">registros</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">registro</span> <span class="ow">in</span> <span class="n">registros</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">registro</span><span class="o">.</span><span class="n">regencia</span> <span class="ow">and</span> <span class="n">registro</span><span class="o">.</span><span class="n">componentes_regencia</span><span class="p">:</span>
+                <span class="n">BoletimService</span><span class="o">.</span><span class="n">_agrupar_regencia_pai</span><span class="p">(</span>
+                    <span class="n">regencias_por_codigo</span><span class="p">,</span>
+                    <span class="n">registro</span><span class="p">,</span>
+                    <span class="n">registros_por_componente</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">registro</span><span class="o">.</span><span class="n">regencia</span> <span class="ow">and</span> <span class="n">registro</span><span class="o">.</span><span class="n">componente_pai_codigo</span><span class="p">:</span>
+                <span class="n">BoletimService</span><span class="o">.</span><span class="n">_agrupar_regencia</span><span class="p">(</span>
+                    <span class="n">regencias_por_codigo</span><span class="p">,</span>
+                    <span class="n">registro</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">registro</span><span class="o">.</span><span class="n">regencia</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">chave</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">turma_componente_codigo</span> <span class="ow">or</span> <span class="n">registro</span><span class="o">.</span><span class="n">turma_codigo</span><span class="p">,</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span><span class="p">,</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">disciplina_nome_sgp</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">componente</span> <span class="o">=</span> <span class="n">componentes_por_chave</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+                <span class="n">chave</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"componente_codigo"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span><span class="p">,</span>
+                    <span class="s2">"disciplina_nome"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">disciplina_nome</span><span class="p">,</span>
+                    <span class="s2">"disciplina_nome_sgp"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">disciplina_nome_sgp</span><span class="p">,</span>
+                    <span class="s2">"componente_pai_codigo"</span><span class="p">:</span> <span class="p">(</span><span class="n">registro</span><span class="o">.</span><span class="n">componente_pai_codigo</span><span class="p">),</span>
+                    <span class="s2">"componente_pai_nome"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">componente_pai_nome</span><span class="p">,</span>
+                    <span class="s2">"lanca_nota"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">lanca_nota</span><span class="p">,</span>
+                    <span class="s2">"registra_frequencia"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">registra_frequencia</span><span class="p">,</span>
+                    <span class="s2">"base_nacional"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">base_nacional</span><span class="p">,</span>
+                    <span class="s2">"compartilhada"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">compartilhada</span><span class="p">,</span>
+                    <span class="s2">"territorio_saber"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">territorio_saber</span><span class="p">,</span>
+                    <span class="s2">"componente_territorio_codigo"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="n">registro</span><span class="o">.</span><span class="n">componente_territorio_codigo</span>
+                    <span class="p">),</span>
+                    <span class="s2">"territorio_codigo"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">territorio_codigo</span><span class="p">,</span>
+                    <span class="s2">"experiencia_pedagogica_codigo"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="n">registro</span><span class="o">.</span><span class="n">experiencia_pedagogica_codigo</span>
+                    <span class="p">),</span>
+                    <span class="s2">"territorio_nome"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">territorio_nome</span><span class="p">,</span>
+                    <span class="s2">"experiencia_pedagogica_nome"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="n">registro</span><span class="o">.</span><span class="n">experiencia_pedagogica_nome</span>
+                    <span class="p">),</span>
+                    <span class="s2">"turma_regular_codigo"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">turma_regular_codigo</span><span class="p">,</span>
+                    <span class="s2">"turma_componente_codigo"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="n">registro</span><span class="o">.</span><span class="n">turma_componente_codigo</span>
+                        <span class="ow">or</span> <span class="n">registro</span><span class="o">.</span><span class="n">turma_codigo</span>
+                    <span class="p">),</span>
+                    <span class="s2">"grupo_matriz_id"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">grupo_matriz_id</span><span class="p">,</span>
+                    <span class="s2">"grupo_matriz_nome"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">grupo_matriz_nome</span><span class="p">,</span>
+                    <span class="s2">"area_conhecimento_id"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">area_conhecimento_id</span><span class="p">,</span>
+                    <span class="s2">"area_conhecimento_nome"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="n">registro</span><span class="o">.</span><span class="n">area_conhecimento_nome</span>
+                    <span class="p">),</span>
+                    <span class="s2">"ordem_grupo_area"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">ordem_grupo_area</span><span class="p">,</span>
+                    <span class="s2">"regencia"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">regencia</span><span class="p">,</span>
+                    <span class="s2">"bimestres"</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">bimestres</span> <span class="o">=</span> <span class="n">componente</span><span class="p">[</span><span class="s2">"bimestres"</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bimestres</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">bimestres</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">BoletimService</span><span class="o">.</span><span class="n">_dados_bimestre</span><span class="p">(</span>
+                        <span class="n">registro</span><span class="p">,</span>
+                        <span class="n">incluir_nota</span><span class="o">=</span><span class="n">registro</span><span class="o">.</span><span class="n">lanca_nota</span><span class="p">,</span>
+                        <span class="n">incluir_frequencia</span><span class="o">=</span><span class="n">registro</span><span class="o">.</span><span class="n">registra_frequencia</span><span class="p">,</span>
+                        <span class="n">incluir_sintese</span><span class="o">=</span><span class="ow">not</span> <span class="n">registro</span><span class="o">.</span><span class="n">lanca_nota</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">"dados_aluno"</span><span class="p">:</span> <span class="n">dados_aluno</span><span class="p">,</span>
+            <span class="s2">"componentes"</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span>
+                <span class="n">componentes_por_chave</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
+                <span class="n">key</span><span class="o">=</span><span class="n">BoletimService</span><span class="o">.</span><span class="n">_chave_ordenacao_componente</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="s2">"regencias"</span><span class="p">:</span> <span class="n">BoletimService</span><span class="o">.</span><span class="n">_finalizar_regencias</span><span class="p">(</span>
+                <span class="n">regencias_por_codigo</span>
+            <span class="p">),</span>
+        <span class="p">}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_indexar_registros_por_componente</span><span class="p">(</span>
+        <span class="n">registros</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""Indexa registros que possuem código de componente.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            registros: Linhas do boletim a serem indexadas.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Registros agrupados pelo código do componente curricular.</span>
+<span class="sd">        """</span>
+        <span class="n">registros_por_componente</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">registro</span> <span class="ow">in</span> <span class="n">registros</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">registros_por_componente</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+                    <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span><span class="p">,</span> <span class="p">[]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">registro</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">registros_por_componente</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dados_bimestre</span><span class="p">(</span>
+        <span class="n">registro</span><span class="p">:</span> <span class="n">Boletim</span><span class="p">,</span>
+        <span class="n">incluir_nota</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">incluir_frequencia</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">incluir_sintese</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Mapeie os dados acadêmicos de um bimestre.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            registro: Linha consolidada usada na resposta.</span>
+<span class="sd">            incluir_nota: Indica se nota e conceito devem ser exibidos.</span>
+<span class="sd">            incluir_frequencia: Indica se a frequência deve ser exibida.</span>
+<span class="sd">            incluir_sintese: Indica se a síntese `F` ou `NF` deve ser gerada.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dados do período com as regras de exibição aplicadas.</span>
+<span class="sd">        """</span>
+        <span class="n">possui_conselho</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">registro</span><span class="o">.</span><span class="n">conselho_classe_cadastrado</span><span class="p">)</span>
+        <span class="n">exibir_nota</span> <span class="o">=</span> <span class="n">incluir_nota</span> <span class="ow">and</span> <span class="n">possui_conselho</span>
+        <span class="n">exibir_frequencia</span> <span class="o">=</span> <span class="n">incluir_frequencia</span> <span class="ow">and</span> <span class="n">possui_conselho</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">"bimestre"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">bimestre</span><span class="p">,</span>
+            <span class="s2">"periodo_escolar_id"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">periodo_escolar_id</span><span class="p">,</span>
+            <span class="s2">"componente_existia_no_periodo"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">componente_existia_no_periodo</span>
+            <span class="p">),</span>
+            <span class="s2">"conselho_classe_cadastrado"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">conselho_classe_cadastrado</span>
+            <span class="p">),</span>
+            <span class="s2">"nota"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">nota</span> <span class="k">if</span> <span class="n">exibir_nota</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">"conceito_id"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">conceito_id</span> <span class="k">if</span> <span class="n">exibir_nota</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">"conceito"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">conceito</span> <span class="k">if</span> <span class="n">exibir_nota</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">"total_aulas"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">total_aulas</span> <span class="k">if</span> <span class="n">exibir_frequencia</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="s2">"total_presencas"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">total_presencas</span> <span class="k">if</span> <span class="n">exibir_frequencia</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="s2">"total_ausencias"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">total_ausencias</span> <span class="k">if</span> <span class="n">exibir_frequencia</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="s2">"total_compensacoes"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">total_compensacoes</span> <span class="k">if</span> <span class="n">exibir_frequencia</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="s2">"total_remotos"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">total_remotos</span> <span class="k">if</span> <span class="n">exibir_frequencia</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="s2">"total_aulas_global"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_aulas_global</span><span class="p">,</span>
+            <span class="s2">"total_presencas_global"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_presencas_global</span><span class="p">,</span>
+            <span class="s2">"total_ausencias_global"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_ausencias_global</span><span class="p">,</span>
+            <span class="s2">"total_compensacoes_global"</span><span class="p">:</span> <span class="p">(</span><span class="n">registro</span><span class="o">.</span><span class="n">total_compensacoes_global</span><span class="p">),</span>
+            <span class="s2">"total_remotos_global"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_remotos_global</span><span class="p">,</span>
+            <span class="s2">"media_frequencia"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">media_frequencia</span><span class="p">,</span>
+            <span class="s2">"tipo_nota"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">tipo_nota</span><span class="p">,</span>
+            <span class="s2">"tipo_nota_descricao"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">tipo_nota_descricao</span><span class="p">,</span>
+            <span class="s2">"sintese"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">BoletimService</span><span class="o">.</span><span class="n">_obter_sintese_frequencia</span><span class="p">(</span><span class="n">registro</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">incluir_sintese</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="s2">"origem_frequencia"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">origem_frequencia</span> <span class="k">if</span> <span class="n">exibir_frequencia</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="s2">"parecer_conclusivo"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">parecer_conclusivo</span><span class="p">,</span>
+            <span class="s2">"recomendacoes_aluno"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">recomendacoes_aluno</span><span class="p">,</span>
+            <span class="s2">"recomendacoes_familia"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">recomendacoes_familia</span><span class="p">,</span>
+            <span class="s2">"anotacoes_pedagogicas"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">anotacoes_pedagogicas</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_agrupar_regencia</span><span class="p">(</span>
+        <span class="n">regencias</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]],</span>
+        <span class="n">registro</span><span class="p">:</span> <span class="n">Boletim</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Agrupe frequência no pai e notas nas disciplinas de regência.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            regencias: Agrupamentos indexados pelo componente pai.</span>
+<span class="sd">            registro: Linha da disciplina filha incorporada ao agrupamento.</span>
+<span class="sd">        """</span>
+        <span class="n">codigo_pai</span> <span class="o">=</span> <span class="n">registro</span><span class="o">.</span><span class="n">componente_pai_codigo</span>
+        <span class="n">chave_regencia</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">registro</span><span class="o">.</span><span class="n">turma_componente_codigo</span> <span class="ow">or</span> <span class="n">registro</span><span class="o">.</span><span class="n">turma_codigo</span><span class="p">,</span>
+            <span class="n">codigo_pai</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">regencia</span> <span class="o">=</span> <span class="n">regencias</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+            <span class="n">chave_regencia</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">"codigo"</span><span class="p">:</span> <span class="n">codigo_pai</span><span class="p">,</span>
+                <span class="s2">"nome"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">componente_pai_nome</span><span class="p">,</span>
+                <span class="s2">"grupo_matriz_id"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">grupo_matriz_id</span><span class="p">,</span>
+                <span class="s2">"registra_frequencia"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">registra_frequencia</span><span class="p">,</span>
+                <span class="s2">"bimestres"</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s2">"componentes"</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">bimestres</span> <span class="o">=</span> <span class="n">regencia</span><span class="p">[</span><span class="s2">"bimestres"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bimestres</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">dados_frequencia</span> <span class="o">=</span> <span class="n">BoletimService</span><span class="o">.</span><span class="n">_dados_bimestre</span><span class="p">(</span>
+                <span class="n">registro</span><span class="p">,</span>
+                <span class="n">incluir_nota</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">incluir_frequencia</span><span class="o">=</span><span class="n">registro</span><span class="o">.</span><span class="n">registra_frequencia</span><span class="p">,</span>
+                <span class="n">incluir_sintese</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">existente</span> <span class="o">=</span> <span class="n">bimestres</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">registro</span><span class="o">.</span><span class="n">bimestre</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">existente</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">existente</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">existente</span><span class="p">[</span><span class="s2">"total_aulas"</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">dados_frequencia</span><span class="p">[</span><span class="s2">"total_aulas"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="p">):</span>
+                <span class="n">bimestres</span><span class="p">[</span><span class="n">registro</span><span class="o">.</span><span class="n">bimestre</span><span class="p">]</span> <span class="o">=</span> <span class="n">dados_frequencia</span>
+
+        <span class="n">componentes</span> <span class="o">=</span> <span class="n">regencia</span><span class="p">[</span><span class="s2">"componentes"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">componentes</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="n">componente</span> <span class="o">=</span> <span class="n">componentes</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+            <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">"componente_codigo"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span><span class="p">,</span>
+                <span class="s2">"disciplina_nome"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">disciplina_nome</span><span class="p">,</span>
+                <span class="s2">"disciplina_nome_sgp"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">disciplina_nome_sgp</span><span class="p">,</span>
+                <span class="s2">"lanca_nota"</span><span class="p">:</span> <span class="n">registro</span><span class="o">.</span><span class="n">lanca_nota</span><span class="p">,</span>
+                <span class="s2">"bimestres"</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">bimestres_componente</span> <span class="o">=</span> <span class="n">componente</span><span class="p">[</span><span class="s2">"bimestres"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bimestres_componente</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">bimestres_componente</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">BoletimService</span><span class="o">.</span><span class="n">_dados_bimestre</span><span class="p">(</span>
+                    <span class="n">registro</span><span class="p">,</span>
+                    <span class="n">incluir_nota</span><span class="o">=</span><span class="n">registro</span><span class="o">.</span><span class="n">lanca_nota</span><span class="p">,</span>
+                    <span class="n">incluir_frequencia</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">incluir_sintese</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_agrupar_regencia_pai</span><span class="p">(</span>
+        <span class="n">regencias</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]],</span>
+        <span class="n">registro_pai</span><span class="p">:</span> <span class="n">Boletim</span><span class="p">,</span>
+        <span class="n">registros_por_componente</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Agrupe o pai de regência e associe seus componentes declarados.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            regencias: Agrupamentos indexados pelo componente pai.</span>
+<span class="sd">            registro_pai: Linha do componente de regência.</span>
+<span class="sd">            registros_por_componente: Linhas acadêmicas indexadas por código.</span>
+<span class="sd">        """</span>
+        <span class="n">codigo_pai</span> <span class="o">=</span> <span class="n">registro_pai</span><span class="o">.</span><span class="n">componente_codigo</span>
+        <span class="n">chave</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">registro_pai</span><span class="o">.</span><span class="n">turma_componente_codigo</span> <span class="ow">or</span> <span class="n">registro_pai</span><span class="o">.</span><span class="n">turma_codigo</span><span class="p">,</span>
+            <span class="n">codigo_pai</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">regencia</span> <span class="o">=</span> <span class="n">regencias</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+            <span class="n">chave</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">"codigo"</span><span class="p">:</span> <span class="n">codigo_pai</span><span class="p">,</span>
+                <span class="s2">"nome"</span><span class="p">:</span> <span class="n">registro_pai</span><span class="o">.</span><span class="n">disciplina_nome_sgp</span><span class="p">,</span>
+                <span class="s2">"grupo_matriz_id"</span><span class="p">:</span> <span class="n">registro_pai</span><span class="o">.</span><span class="n">grupo_matriz_id</span><span class="p">,</span>
+                <span class="s2">"registra_frequencia"</span><span class="p">:</span> <span class="n">registro_pai</span><span class="o">.</span><span class="n">registra_frequencia</span><span class="p">,</span>
+                <span class="s2">"bimestres"</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s2">"componentes"</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">bimestres</span> <span class="o">=</span> <span class="n">regencia</span><span class="p">[</span><span class="s2">"bimestres"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bimestres</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">bimestres</span><span class="p">[</span><span class="n">registro_pai</span><span class="o">.</span><span class="n">bimestre</span><span class="p">]</span> <span class="o">=</span> <span class="n">BoletimService</span><span class="o">.</span><span class="n">_dados_bimestre</span><span class="p">(</span>
+                <span class="n">registro_pai</span><span class="p">,</span>
+                <span class="n">incluir_nota</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">incluir_frequencia</span><span class="o">=</span><span class="n">registro_pai</span><span class="o">.</span><span class="n">registra_frequencia</span><span class="p">,</span>
+                <span class="n">incluir_sintese</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">componentes</span> <span class="o">=</span> <span class="n">regencia</span><span class="p">[</span><span class="s2">"componentes"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">componentes</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">registro_pai</span><span class="o">.</span><span class="n">componentes_regencia</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+                <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo"</span><span class="p">),</span> <span class="nb">int</span>
+            <span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">codigo</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s2">"codigo"</span><span class="p">]</span>
+            <span class="n">componente</span> <span class="o">=</span> <span class="n">componentes</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+                <span class="n">codigo</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">"componente_codigo"</span><span class="p">:</span> <span class="n">codigo</span><span class="p">,</span>
+                    <span class="s2">"disciplina_nome"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"nome"</span><span class="p">),</span>
+                    <span class="s2">"disciplina_nome_sgp"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"nome"</span><span class="p">),</span>
+                    <span class="s2">"lanca_nota"</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lanca_nota"</span><span class="p">)),</span>
+                    <span class="s2">"bimestres"</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">bimestres_componente</span> <span class="o">=</span> <span class="n">componente</span><span class="p">[</span><span class="s2">"bimestres"</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bimestres_componente</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">registros_filho</span> <span class="o">=</span> <span class="n">registros_por_componente</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">codigo</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">registro_filho</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="n">filho</span>
+                    <span class="k">for</span> <span class="n">filho</span> <span class="ow">in</span> <span class="n">registros_filho</span>
+                    <span class="k">if</span> <span class="n">filho</span><span class="o">.</span><span class="n">bimestre</span> <span class="o">==</span> <span class="n">registro_pai</span><span class="o">.</span><span class="n">bimestre</span>
+                <span class="p">),</span>
+                <span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fonte_nota</span> <span class="o">=</span> <span class="n">registro_filho</span> <span class="ow">or</span> <span class="n">registro_pai</span>
+            <span class="n">bimestres_componente</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">BoletimService</span><span class="o">.</span><span class="n">_dados_bimestre</span><span class="p">(</span>
+                    <span class="n">fonte_nota</span><span class="p">,</span>
+                    <span class="n">incluir_nota</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lanca_nota"</span><span class="p">)),</span>
+                    <span class="n">incluir_frequencia</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">incluir_sintese</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_finalizar_regencias</span><span class="p">(</span>
+        <span class="n">regencias</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""Converta agrupamentos internos no contrato ordenado da resposta.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            regencias: Agrupamentos internos indexados em dicionários.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Regências com bimestres e componentes representados em listas.</span>
+<span class="sd">        """</span>
+        <span class="n">resultado</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">regencia</span> <span class="ow">in</span> <span class="n">regencias</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">bimestres</span> <span class="o">=</span> <span class="n">regencia</span><span class="p">[</span><span class="s2">"bimestres"</span><span class="p">]</span>
+            <span class="n">componentes</span> <span class="o">=</span> <span class="n">regencia</span><span class="p">[</span><span class="s2">"componentes"</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bimestres</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">regencia</span><span class="p">[</span><span class="s2">"bimestres"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">bimestres</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">componentes</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">regencia</span><span class="p">[</span><span class="s2">"componentes"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+                    <span class="n">componentes</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
+                    <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"disciplina_nome_sgp"</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="n">resultado</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">regencia</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">resultado</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_chave_ordenacao_componente</span><span class="p">(</span>
+        <span class="n">componente</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Produza a chave oficial de ordenação do componente.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            componente: Componente com ordem, grupo matriz e nome.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Matriz, presença de área e nome usados na ordenação oficial.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">BoletimService</span><span class="o">.</span><span class="n">_inteiro_ordenacao</span><span class="p">(</span><span class="n">componente</span><span class="p">[</span><span class="s2">"grupo_matriz_id"</span><span class="p">]),</span>
+            <span class="mi">0</span> <span class="k">if</span> <span class="n">componente</span><span class="p">[</span><span class="s2">"ordem_grupo_area"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">componente</span><span class="p">[</span><span class="s2">"disciplina_nome_sgp"</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_inteiro_ordenacao</span><span class="p">(</span><span class="n">valor</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Normalize identificadores numéricos usados na ordenação.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            valor: Identificador possivelmente nulo ou não numérico.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Identificador inteiro ou zero quando o valor não for inteiro.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="n">valor</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">valor</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_obter_sintese_frequencia</span><span class="p">(</span><span class="n">registro</span><span class="p">:</span> <span class="n">Boletim</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Produza `F` ou `NF` para o fechamento final sem nota.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            registro: Linha final contendo totais e média de frequência.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Síntese de frequência ou `None` quando ela não for aplicável.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">registro</span><span class="o">.</span><span class="n">bimestre</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="ow">not</span> <span class="n">registro</span><span class="o">.</span><span class="n">conselho_classe_cadastrado</span>
+            <span class="ow">or</span> <span class="n">registro</span><span class="o">.</span><span class="n">media_frequencia</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_aulas</span> <span class="ow">or</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_ausencias</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">"F"</span>
+        <span class="n">compensacoes</span> <span class="o">=</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_compensacoes</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">presencas</span> <span class="o">=</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_aulas</span> <span class="o">-</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_ausencias</span>
+        <span class="n">percentual</span> <span class="o">=</span> <span class="p">(</span><span class="n">presencas</span> <span class="o">+</span> <span class="n">compensacoes</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">/</span> <span class="n">registro</span><span class="o">.</span><span class="n">total_aulas</span>
+        <span class="k">return</span> <span class="s2">"F"</span> <span class="k">if</span> <span class="n">percentual</span> <span class="o">&gt;=</span> <span class="nb">float</span><span class="p">(</span><span class="n">registro</span><span class="o">.</span><span class="n">media_frequencia</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"NF"</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_completar_bimestres</span><span class="p">(</span><span class="n">registros</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Cria registros vazios para os bimestres sem dados.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            registros: Linhas existentes do boletim do aluno.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Linhas originais e complementares ordenadas por bimestre.</span>
+<span class="sd">        """</span>
+        <span class="n">modalidade</span> <span class="o">=</span> <span class="n">registros</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">modalidade_codigo</span>
+        <span class="n">bimestres</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">BIMESTRES_SEMESTRAIS</span>
+            <span class="k">if</span> <span class="n">modalidade</span> <span class="ow">in</span> <span class="n">MODALIDADES_SEMESTRAIS</span>
+            <span class="k">else</span> <span class="n">BIMESTRES_ANUAIS</span>
+        <span class="p">)</span>
+        <span class="n">grupos</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Boletim</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">registro</span> <span class="ow">in</span> <span class="n">registros</span><span class="p">:</span>
+            <span class="n">chave</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">turma_componente_codigo</span> <span class="ow">or</span> <span class="n">registro</span><span class="o">.</span><span class="n">turma_codigo</span><span class="p">,</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span><span class="p">,</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">disciplina_nome_sgp</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">grupos</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">chave</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">registro</span><span class="p">)</span>
+
+        <span class="n">resultado</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">registro</span>
+            <span class="k">for</span> <span class="n">registro</span> <span class="ow">in</span> <span class="n">registros</span>
+            <span class="k">if</span> <span class="n">registro</span><span class="o">.</span><span class="n">bimestre</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">bimestres</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">registros_componente</span> <span class="ow">in</span> <span class="n">grupos</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">bimestres_existentes</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">registro</span><span class="o">.</span><span class="n">bimestre</span> <span class="k">for</span> <span class="n">registro</span> <span class="ow">in</span> <span class="n">registros_componente</span>
+            <span class="p">}</span>
+            <span class="n">modelo</span> <span class="o">=</span> <span class="n">registros_componente</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">numero</span> <span class="ow">in</span> <span class="n">bimestres</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">numero</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">bimestres_existentes</span><span class="p">:</span>
+                    <span class="n">resultado</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">BoletimService</span><span class="o">.</span><span class="n">_criar_registro_vazio</span><span class="p">(</span><span class="n">modelo</span><span class="p">,</span> <span class="n">numero</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">resultado</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">BoletimService</span><span class="o">.</span><span class="n">_chave_ordenacao</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_criar_registro_vazio</span><span class="p">(</span><span class="n">modelo</span><span class="p">:</span> <span class="n">Boletim</span><span class="p">,</span> <span class="n">bimestre</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Boletim</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Produza uma cópia do componente sem dados acadêmicos.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            modelo: Linha usada como origem dos metadados do componente.</span>
+<span class="sd">            bimestre: Número do período complementar criado.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Linha transitória com os dados acadêmicos vazios.</span>
+<span class="sd">        """</span>
+        <span class="n">valores</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">campo</span><span class="o">.</span><span class="n">attname</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">modelo</span><span class="p">,</span> <span class="n">campo</span><span class="o">.</span><span class="n">attname</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">campo</span> <span class="ow">in</span> <span class="n">Boletim</span><span class="o">.</span><span class="n">_meta</span><span class="o">.</span><span class="n">concrete_fields</span>
+        <span class="p">}</span>
+        <span class="n">valores</span><span class="p">[</span><span class="s2">"bimestre"</span><span class="p">]</span> <span class="o">=</span> <span class="n">bimestre</span>
+        <span class="k">for</span> <span class="n">campo</span> <span class="ow">in</span> <span class="n">_CAMPOS_SEM_DADOS</span><span class="p">:</span>
+            <span class="n">valores</span><span class="p">[</span><span class="n">campo</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">valores</span><span class="p">[</span><span class="s2">"conselho_classe_cadastrado"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">Boletim</span><span class="p">(</span><span class="o">**</span><span class="n">valores</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_chave_ordenacao</span><span class="p">(</span><span class="n">registro</span><span class="p">:</span> <span class="n">Boletim</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Produza a chave de ordenação das linhas do boletim.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            registro: Linha consolidada do boletim.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Chave composta por bimestre, disciplina e componente.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">registro</span><span class="o">.</span><span class="n">bimestre</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">registro</span><span class="o">.</span><span class="n">disciplina_nome_sgp</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
+            <span class="n">registro</span><span class="o">.</span><span class="n">componente_codigo</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">sme_sgp_boletim_ms</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Ir" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navegação</h3>
+<p class="caption" role="heading"><span class="caption-text">Referência</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Referência de código</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Código do módulo</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

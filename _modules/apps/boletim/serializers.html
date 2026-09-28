@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>apps.boletim.serializers &#8212; SME SGP Boletim MS</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=2346ddef"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/translations.js?v=71a39b36"></script>
+    <link rel="index" title="Índice" href="../../../genindex.html" />
+    <link rel="search" title="Buscar" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Código-fonte para apps.boletim.serializers</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Serializers dos contratos HTTP de boletim."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">rest_framework</span><span class="w"> </span><span class="kn">import</span> <span class="n">serializers</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.boletim.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Boletim</span>
+
+<span class="n">MODALIDADES_CHOICES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"Educação Infantil (EI)"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">"Educação de Jovens e Adultos (EJA)"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="s2">"CIEJA"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s2">"Ensino Fundamental (EF)"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="s2">"Ensino Médio (EM)"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s2">"CMCT"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">"MOVA"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s2">"ETEC"</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s2">"CELP"</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">_DESCRICAO_CAMPO_MODALIDADE</span> <span class="o">=</span> <span class="s2">"Código da modalidade de ensino."</span>
+<span class="n">DESCRICAO_MODALIDADES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">_DESCRICAO_CAMPO_MODALIDADE</span>
+    <span class="o">+</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">"</span>
+    <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"* `</span><span class="si">{</span><span class="n">codigo</span><span class="si">}</span><span class="s2">` - </span><span class="si">{</span><span class="n">descricao</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">for</span> <span class="n">codigo</span><span class="p">,</span> <span class="n">descricao</span> <span class="ow">in</span> <span class="n">MODALIDADES_CHOICES</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="FiltrosBoletinsSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.FiltrosBoletinsSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FiltrosBoletinsSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Valida os filtros da consulta coletiva de boletins."""</span>
+
+    <span class="n">ano_letivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+    <span class="n">dre_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">ue_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">semestre</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">turma_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">modalidade</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ChoiceField</span><span class="p">(</span>
+        <span class="n">choices</span><span class="o">=</span><span class="n">MODALIDADES_CHOICES</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="n">_DESCRICAO_CAMPO_MODALIDADE</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">alunos_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ListField</span><span class="p">(</span>
+        <span class="n">child</span><span class="o">=</span><span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">considera_inativo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">"Indica se estudantes inativos devem ser incluídos."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">bimestre</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">max_value</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="FiltrosBoletinsPdfSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.FiltrosBoletinsPdfSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FiltrosBoletinsPdfSerializer</span><span class="p">(</span><span class="n">FiltrosBoletinsSerializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Valida os filtros da geração coletiva de boletins em PDF."""</span>
+
+    <span class="n">boletins_por_pagina</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ChoiceField</span><span class="p">(</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">"Quantidade de boletins exibidos em cada página."</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="DadosAlunoBoletimSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.DadosAlunoBoletimSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DadosAlunoBoletimSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa a identificação do aluno e de sua turma."""</span>
+
+    <span class="n">anoLetivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"ano_letivo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">modalidadeCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"modalidade_codigo"</span>
+    <span class="p">)</span>
+    <span class="n">semestre</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">dreCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"dre_codigo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">dreNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"dre_nome"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">ueCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"ue_codigo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">ueNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"ue_nome"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">turmaCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"turma_codigo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">turmaNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"turma_nome"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">ciclo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">alunoCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"aluno_codigo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">numeroChamada</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"numero_chamada"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="n">alunoNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"aluno_nome"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">nomeSocial</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"nome_social"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="BimestreComponenteSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.BimestreComponenteSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BimestreComponenteSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa os dados acadêmicos de um componente no bimestre."""</span>
+
+    <span class="n">bimestre</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">periodoEscolarId</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"periodo_escolar_id"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">componenteExistiaNoPeriodo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"componente_existia_no_periodo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">conselhoClasseCadastrado</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"conselho_classe_cadastrado"</span>
+    <span class="p">)</span>
+    <span class="n">nota</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">conceitoId</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"conceito_id"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">conceito</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">totalAulas</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_aulas"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalPresencas</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_presencas"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalAusencias</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_ausencias"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalCompensacoes</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_compensacoes"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalRemotos</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_remotos"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalAulasGlobal</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_aulas_global"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalPresencasGlobal</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_presencas_global"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalAusenciasGlobal</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_ausencias_global"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalCompensacoesGlobal</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_compensacoes_global"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalRemotosGlobal</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_remotos_global"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">mediaFrequencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"media_frequencia"</span><span class="p">,</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">tipoNota</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"tipo_nota"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">tipoNotaDescricao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"tipo_nota_descricao"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">sintese</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">origemFrequencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"origem_frequencia"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">parecerConclusivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"parecer_conclusivo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">recomendacoesAluno</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"recomendacoes_aluno"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">recomendacoesFamilia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"recomendacoes_familia"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">anotacoesPedagogicas</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"anotacoes_pedagogicas"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ComponenteBoletimSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.ComponenteBoletimSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponenteBoletimSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa um componente e seus dados por bimestre."""</span>
+
+    <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"componente_codigo"</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">nome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"disciplina_nome"</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">nomeSgp</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"disciplina_nome_sgp"</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">componentePaiCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"componente_pai_codigo"</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">componentePaiNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"componente_pai_nome"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">lancaNota</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"lanca_nota"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">registraFrequencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"registra_frequencia"</span>
+    <span class="p">)</span>
+    <span class="n">baseNacional</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"base_nacional"</span>
+    <span class="p">)</span>
+    <span class="n">compartilhada</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">territorioSaber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"territorio_saber"</span>
+    <span class="p">)</span>
+    <span class="n">componenteTerritorioCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"componente_territorio_codigo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">territorioCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"territorio_codigo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">experienciaPedagogicaCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"experiencia_pedagogica_codigo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">territorioNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"territorio_nome"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">experienciaPedagogicaNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"experiencia_pedagogica_nome"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">turmaRegularCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"turma_regular_codigo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">turmaComponenteCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"turma_componente_codigo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">grupoMatrizId</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"grupo_matriz_id"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">grupoMatrizNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"grupo_matriz_nome"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">areaConhecimentoId</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"area_conhecimento_id"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">areaConhecimentoNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"area_conhecimento_nome"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">ordemGrupoArea</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"ordem_grupo_area"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">regencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">bimestres</span> <span class="o">=</span> <span class="n">BimestreComponenteSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ComponenteRegenciaSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.ComponenteRegenciaSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponenteRegenciaSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa uma disciplina filha da regÃªncia de classe."""</span>
+
+    <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"componente_codigo"</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">nome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"disciplina_nome"</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">nomeSgp</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"disciplina_nome_sgp"</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">lancaNota</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"lanca_nota"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">bimestres</span> <span class="o">=</span> <span class="n">BimestreComponenteSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="RegenciaBoletimSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.RegenciaBoletimSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RegenciaBoletimSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa a frequÃªncia comum e as disciplinas da regÃªncia."""</span>
+
+    <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">nome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">registraFrequencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"registra_frequencia"</span>
+    <span class="p">)</span>
+    <span class="n">bimestres</span> <span class="o">=</span> <span class="n">BimestreComponenteSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">componentes</span> <span class="o">=</span> <span class="n">ComponenteRegenciaSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="BoletimAlunoResponseSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.BoletimAlunoResponseSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BoletimAlunoResponseSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa o boletim hierárquico de um aluno."""</span>
+
+    <span class="n">dadosAluno</span> <span class="o">=</span> <span class="n">DadosAlunoBoletimSerializer</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"dados_aluno"</span><span class="p">,</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">componentes</span> <span class="o">=</span> <span class="n">ComponenteBoletimSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">regencias</span> <span class="o">=</span> <span class="n">RegenciaBoletimSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="RegistroBoletimSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.serializers.RegistroBoletimSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RegistroBoletimSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">ModelSerializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa uma linha consolidada do boletim escolar."""</span>
+
+    <span class="n">anoLetivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"ano_letivo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">modalidadeCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"modalidade_codigo"</span>
+    <span class="p">)</span>
+    <span class="n">dreCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"dre_codigo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">dreNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"dre_nome"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">ueCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"ue_codigo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">ueNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"ue_nome"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">turmaCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"turma_codigo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">turmaNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"turma_nome"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">ciclo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">alunoCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"aluno_codigo"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">alunoNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"aluno_nome"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">nomeSocial</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"nome_social"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">periodoEscolarId</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"periodo_escolar_id"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">componenteCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"componente_codigo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">disciplinaNome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"disciplina_nome"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">disciplinaNomeSgp</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"disciplina_nome_sgp"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">componenteExistiaNoPeriodo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"componente_existia_no_periodo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">conceitoId</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"conceito_id"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalAulas</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_aulas"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalPresencas</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_presencas"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalAusencias</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_ausencias"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalCompensacoes</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_compensacoes"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">totalRemotos</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"total_remotos"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">origemFrequencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"origem_frequencia"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">parecerConclusivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"parecer_conclusivo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">recomendacoesAluno</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"recomendacoes_aluno"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">recomendacoesFamilia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"recomendacoes_familia"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">anotacoesPedagogicas</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"anotacoes_pedagogicas"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">Boletim</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">"anoLetivo"</span><span class="p">,</span>
+            <span class="s2">"modalidadeCodigo"</span><span class="p">,</span>
+            <span class="s2">"semestre"</span><span class="p">,</span>
+            <span class="s2">"dreCodigo"</span><span class="p">,</span>
+            <span class="s2">"dreNome"</span><span class="p">,</span>
+            <span class="s2">"ueCodigo"</span><span class="p">,</span>
+            <span class="s2">"ueNome"</span><span class="p">,</span>
+            <span class="s2">"turmaCodigo"</span><span class="p">,</span>
+            <span class="s2">"turmaNome"</span><span class="p">,</span>
+            <span class="s2">"ciclo"</span><span class="p">,</span>
+            <span class="s2">"alunoCodigo"</span><span class="p">,</span>
+            <span class="s2">"alunoNome"</span><span class="p">,</span>
+            <span class="s2">"nomeSocial"</span><span class="p">,</span>
+            <span class="s2">"periodoEscolarId"</span><span class="p">,</span>
+            <span class="s2">"bimestre"</span><span class="p">,</span>
+            <span class="s2">"componenteCodigo"</span><span class="p">,</span>
+            <span class="s2">"disciplinaNome"</span><span class="p">,</span>
+            <span class="s2">"disciplinaNomeSgp"</span><span class="p">,</span>
+            <span class="s2">"componenteExistiaNoPeriodo"</span><span class="p">,</span>
+            <span class="s2">"nota"</span><span class="p">,</span>
+            <span class="s2">"conceitoId"</span><span class="p">,</span>
+            <span class="s2">"totalAulas"</span><span class="p">,</span>
+            <span class="s2">"totalPresencas"</span><span class="p">,</span>
+            <span class="s2">"totalAusencias"</span><span class="p">,</span>
+            <span class="s2">"totalCompensacoes"</span><span class="p">,</span>
+            <span class="s2">"totalRemotos"</span><span class="p">,</span>
+            <span class="s2">"origemFrequencia"</span><span class="p">,</span>
+            <span class="s2">"parecerConclusivo"</span><span class="p">,</span>
+            <span class="s2">"recomendacoesAluno"</span><span class="p">,</span>
+            <span class="s2">"recomendacoesFamilia"</span><span class="p">,</span>
+            <span class="s2">"anotacoesPedagogicas"</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">sme_sgp_boletim_ms</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Ir" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navegação</h3>
+<p class="caption" role="heading"><span class="caption-text">Referência</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Referência de código</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Código do módulo</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

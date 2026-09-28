@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>apps.boletim.repository &#8212; SME SGP Boletim MS</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=2346ddef"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/translations.js?v=71a39b36"></script>
+    <link rel="index" title="Índice" href="../../../genindex.html" />
+    <link rel="search" title="Buscar" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Código-fonte para apps.boletim.repository</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Consultas ORM do domínio de boletim."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuerySet</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.boletim.constantes</span><span class="w"> </span><span class="kn">import</span> <span class="n">CODIGO_SITUACAO_ALUNO_ATIVO</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.boletim.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Boletim</span>
+
+<span class="n">_CAMPOS_BOLETIM</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"ano_letivo"</span><span class="p">,</span>
+    <span class="s2">"modalidade_codigo"</span><span class="p">,</span>
+    <span class="s2">"semestre"</span><span class="p">,</span>
+    <span class="s2">"dre_codigo"</span><span class="p">,</span>
+    <span class="s2">"dre_nome"</span><span class="p">,</span>
+    <span class="s2">"ue_codigo"</span><span class="p">,</span>
+    <span class="s2">"ue_nome"</span><span class="p">,</span>
+    <span class="s2">"turma_codigo"</span><span class="p">,</span>
+    <span class="s2">"turma_componente_codigo"</span><span class="p">,</span>
+    <span class="s2">"turma_regular_codigo"</span><span class="p">,</span>
+    <span class="s2">"turma_nome"</span><span class="p">,</span>
+    <span class="s2">"ciclo"</span><span class="p">,</span>
+    <span class="s2">"aluno_codigo"</span><span class="p">,</span>
+    <span class="s2">"codigo_situacao_matricula"</span><span class="p">,</span>
+    <span class="s2">"numero_chamada"</span><span class="p">,</span>
+    <span class="s2">"aluno_nome"</span><span class="p">,</span>
+    <span class="s2">"nome_social"</span><span class="p">,</span>
+    <span class="s2">"periodo_escolar_id"</span><span class="p">,</span>
+    <span class="s2">"bimestre"</span><span class="p">,</span>
+    <span class="s2">"componente_codigo"</span><span class="p">,</span>
+    <span class="s2">"disciplina_nome"</span><span class="p">,</span>
+    <span class="s2">"disciplina_nome_sgp"</span><span class="p">,</span>
+    <span class="s2">"componente_pai_codigo"</span><span class="p">,</span>
+    <span class="s2">"componente_pai_nome"</span><span class="p">,</span>
+    <span class="s2">"lanca_nota"</span><span class="p">,</span>
+    <span class="s2">"registra_frequencia"</span><span class="p">,</span>
+    <span class="s2">"base_nacional"</span><span class="p">,</span>
+    <span class="s2">"compartilhada"</span><span class="p">,</span>
+    <span class="s2">"territorio_saber"</span><span class="p">,</span>
+    <span class="s2">"componente_territorio_codigo"</span><span class="p">,</span>
+    <span class="s2">"territorio_codigo"</span><span class="p">,</span>
+    <span class="s2">"experiencia_pedagogica_codigo"</span><span class="p">,</span>
+    <span class="s2">"territorio_nome"</span><span class="p">,</span>
+    <span class="s2">"experiencia_pedagogica_nome"</span><span class="p">,</span>
+    <span class="s2">"grupo_matriz_id"</span><span class="p">,</span>
+    <span class="s2">"grupo_matriz_nome"</span><span class="p">,</span>
+    <span class="s2">"area_conhecimento_id"</span><span class="p">,</span>
+    <span class="s2">"area_conhecimento_nome"</span><span class="p">,</span>
+    <span class="s2">"ordem_grupo_area"</span><span class="p">,</span>
+    <span class="s2">"regencia"</span><span class="p">,</span>
+    <span class="s2">"componentes_regencia"</span><span class="p">,</span>
+    <span class="s2">"componente_existia_no_periodo"</span><span class="p">,</span>
+    <span class="s2">"conselho_classe_cadastrado"</span><span class="p">,</span>
+    <span class="s2">"nota"</span><span class="p">,</span>
+    <span class="s2">"conceito_id"</span><span class="p">,</span>
+    <span class="s2">"conceito"</span><span class="p">,</span>
+    <span class="s2">"total_aulas"</span><span class="p">,</span>
+    <span class="s2">"total_presencas"</span><span class="p">,</span>
+    <span class="s2">"total_ausencias"</span><span class="p">,</span>
+    <span class="s2">"total_compensacoes"</span><span class="p">,</span>
+    <span class="s2">"total_remotos"</span><span class="p">,</span>
+    <span class="s2">"total_aulas_global"</span><span class="p">,</span>
+    <span class="s2">"total_presencas_global"</span><span class="p">,</span>
+    <span class="s2">"total_ausencias_global"</span><span class="p">,</span>
+    <span class="s2">"total_compensacoes_global"</span><span class="p">,</span>
+    <span class="s2">"total_remotos_global"</span><span class="p">,</span>
+    <span class="s2">"media_frequencia"</span><span class="p">,</span>
+    <span class="s2">"tipo_nota"</span><span class="p">,</span>
+    <span class="s2">"tipo_nota_descricao"</span><span class="p">,</span>
+    <span class="s2">"origem_frequencia"</span><span class="p">,</span>
+    <span class="s2">"parecer_conclusivo"</span><span class="p">,</span>
+    <span class="s2">"recomendacoes_aluno"</span><span class="p">,</span>
+    <span class="s2">"recomendacoes_familia"</span><span class="p">,</span>
+    <span class="s2">"anotacoes_pedagogicas"</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="BoletimRepository">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.repository.BoletimRepository">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BoletimRepository</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Consulta a view materializada de boletim por meio do ORM."""</span>
+
+<div class="viewcode-block" id="BoletimRepository.listar_boletins">
+<a class="viewcode-back" href="../../../api.html#apps.boletim.repository.BoletimRepository.listar_boletins">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">listar_boletins</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">dre_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ue_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">semestre</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">modalidade</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">alunos_codigo</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">considera_inativo</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">turma_codigo</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuerySet</span><span class="p">[</span><span class="n">Boletim</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Lista boletins de vários alunos no contexto informado.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ano_letivo: Ano letivo consultado.</span>
+<span class="sd">            dre_codigo: Código da DRE.</span>
+<span class="sd">            ue_codigo: Código da unidade escolar.</span>
+<span class="sd">            semestre: Semestre da turma.</span>
+<span class="sd">            modalidade: Código da modalidade.</span>
+<span class="sd">            alunos_codigo: Códigos dos alunos; vazio seleciona todos.</span>
+<span class="sd">            considera_inativo: Indica se estudantes inativos serão incluídos.</span>
+<span class="sd">            turma_codigo: Código opcional da turma.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Consulta ordenada por aluno, turma, período e componente.</span>
+<span class="sd">        """</span>
+        <span class="n">filtros</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"ano_letivo"</span><span class="p">:</span> <span class="n">ano_letivo</span><span class="p">,</span>
+            <span class="s2">"dre_codigo"</span><span class="p">:</span> <span class="n">dre_codigo</span><span class="p">,</span>
+            <span class="s2">"ue_codigo"</span><span class="p">:</span> <span class="n">ue_codigo</span><span class="p">,</span>
+            <span class="s2">"semestre"</span><span class="p">:</span> <span class="n">semestre</span><span class="p">,</span>
+            <span class="s2">"modalidade_codigo"</span><span class="p">:</span> <span class="n">modalidade</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">turma_codigo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">filtros</span><span class="p">[</span><span class="s2">"turma_codigo"</span><span class="p">]</span> <span class="o">=</span> <span class="n">turma_codigo</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">considera_inativo</span><span class="p">:</span>
+            <span class="n">filtros</span><span class="p">[</span><span class="s2">"codigo_situacao_matricula__in"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">CODIGO_SITUACAO_ALUNO_ATIVO</span>
+            <span class="p">)</span>
+
+        <span class="n">consulta</span> <span class="o">=</span> <span class="n">Boletim</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="o">**</span><span class="n">filtros</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alunos_codigo</span><span class="p">:</span>
+            <span class="n">consulta</span> <span class="o">=</span> <span class="n">consulta</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">aluno_codigo__in</span><span class="o">=</span><span class="n">alunos_codigo</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">consulta</span><span class="o">.</span><span class="n">only</span><span class="p">(</span><span class="o">*</span><span class="n">_CAMPOS_BOLETIM</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span>
+            <span class="s2">"aluno_codigo"</span><span class="p">,</span>
+            <span class="s2">"turma_codigo"</span><span class="p">,</span>
+            <span class="s2">"bimestre"</span><span class="p">,</span>
+            <span class="s2">"disciplina_nome_sgp"</span><span class="p">,</span>
+            <span class="s2">"componente_codigo"</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">sme_sgp_boletim_ms</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Ir" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navegação</h3>
+<p class="caption" role="heading"><span class="caption-text">Referência</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Referência de código</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Código do módulo</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
