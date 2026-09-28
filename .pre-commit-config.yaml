@@ -1,0 +1,26 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        exclude: (^|/)(tests|migrations)/
+        additional_dependencies:
+          - django-stubs
+          - djangorestframework-stubs
+          - django
+          - djangorestframework
+          - drf-spectacular
+          - django-db-connection-pool>=1.2,<2
+          - psycopg[binary]>=3.2,<4
+          - sme-sidecar-sdk @ git+https://github.com/prefeiturasp/SME-Sidecar-SDK.git@v1.0.0
