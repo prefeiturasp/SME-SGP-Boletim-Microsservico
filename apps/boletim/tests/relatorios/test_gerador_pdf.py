@@ -153,7 +153,7 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
         self.assertIn('<div class="linha">', html)
         self.assertIn("height: 9cm", html)
         self.assertIn(".por-1 .centro-valor", html)
-        self.assertIn('role="presentation"', html)
+        self.assertNotIn('role="presentation"', html)
         self.assertIn('scope="colgroup"', html)
         self.assertIn('scope="row"', html)
         self.assertNotIn(' width="', html)

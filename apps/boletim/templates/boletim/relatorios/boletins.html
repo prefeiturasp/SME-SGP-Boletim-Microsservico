@@ -51,11 +51,11 @@
             padding: 5px;
         }
         table { width: 100%; border-collapse: collapse; empty-cells: show; table-layout: fixed; }
-        .cabecalho-principal td { border: 0; }
+        .cabecalho-principal { display: flex; width: 100%; }
         .col-logo { width: 10%; }
         .col-metade { width: 50%; }
         .img-logo-sgp { height: 64px; float: left; }
-        .cabecalho-titulos { width: 80%; padding-right: 10px; }
+        .cabecalho-titulos { flex: 1; padding-right: 10px; }
         .cabecalho-titulo-01 {
             text-align: right;
             font-family: "DejaVu Sans", sans-serif;
@@ -64,9 +64,10 @@
             line-height: 1.5;
         }
         .cabecalho-titulo-02 { text-align: right; font-size: 14px; line-height: 1.5; }
-        .cabecalho-relatorio { font-size: 12px; border: 0; }
-        .cabecalho-relatorio td { border: 1px solid #42474a; padding-left: 10px; }
-        .cabecalho-relatorio + .cabecalho-relatorio td { border-top-color: #fff; }
+        .cabecalho-relatorio { display: flex; width: 100%; font-size: 12px; }
+        .cabecalho-relatorio > div { flex: 1; border: 1px solid #42474a; padding-left: 10px; }
+        .cabecalho-relatorio > div + div { border-left: 0; }
+        .cabecalho-relatorio + .cabecalho-relatorio > div { border-top-color: #fff; }
         .margin-top { margin-top: 5px; }
         .por-1 .margin-top { margin-top: 10px; }
         .tabela { font-size: 12px; border: 0; }
@@ -85,13 +86,13 @@
         .por-1 .centro-valor-eja { font-size: 8px; }
         .sem-borda-bottom { border-bottom-color: #fff !important; }
         .legenda { margin-top: 5px; font-size: 12px; }
-        .parecer td { background: #f3f3f3; font-weight: bold; }
+        .parecer { background: #f3f3f3; border: 1px solid #42474a; font-weight: bold; padding-left: 10px; }
         .tabela-recomendacoes { margin-top: 10px; font-size: 12px; }
         .tabela-recomendacoes td,
         .tabela-recomendacoes th { border: 1px solid #42474a; padding: 0 5px; }
         .recomendacoes-titulo { text-align: center; background: #f3f3f3; font-weight: bold; }
         .tabela-final { margin-top: 1px; font-size: 14px; }
-        .tabela-final td { border-bottom: 1px solid #42474a; padding-left: 10px; }
+        .linha-assinatura { border-bottom: 1px solid #42474a; padding-left: 10px; }
         .por-2 .img-logo-sgp { height: 51.2px; }
         .por-2 .cabecalho-titulos { padding-right: 8px; }
         .por-2 .cabecalho-titulo-01 {
@@ -110,7 +111,7 @@
         .por-2 .centro-bimestre-eja,
         .por-2 .legenda,
         .por-2 .tabela-recomendacoes { font-size: 9.6px; }
-        .por-2 .cabecalho-relatorio td,
+        .por-2 .cabecalho-relatorio > div,
         .por-2 .tabela td,
         .por-2 .tabela th { padding-left: 8px; }
         .por-2 .margin-top { margin-top: 4px; }
@@ -122,7 +123,7 @@
         .por-2 .tabela-recomendacoes td,
         .por-2 .tabela-recomendacoes th { padding: 0 4px; }
         .por-2 .tabela-final { font-size: 11.2px; }
-        .por-2 .tabela-final td { padding-left: 8px; }
+        .por-2 .linha-assinatura { padding-left: 8px; }
         .por-6 { font-size: 6px; }
         .por-6 .img-logo-sgp { height: 28px; }
         .por-6 .cabecalho-titulo-01, .por-6 .cabecalho-relatorio,
@@ -133,12 +134,12 @@
         .por-6 .cabecalho-titulo-02 { font-size: 7px; line-height: normal; }
         .por-6 .centro-titulo, .por-6 .centro-titulo-eja { font-size: 5px; }
         .por-6 .centro-valor, .por-6 .centro-valor-eja { font-size: 4px; }
-        .por-6 .cabecalho-relatorio td,
+        .por-6 .cabecalho-relatorio > div,
         .por-6 .tabela td, .por-6 .tabela th { padding-left: 3px; }
         .por-6 .margin-top { margin-top: 2px; }
         .por-6 .legenda { margin-top: 2px; }
         .por-6 .tabela-final { font-size: 6px; }
-        .por-6 .tabela-final td { padding-left: 3px; }
+        .por-6 .linha-assinatura { padding-left: 3px; }
         .por-6 .boletim:first-child { margin-bottom: 1px; }
     </style>
 </head>
@@ -147,12 +148,12 @@
 <section class="pagina">
 {% for linha in pagina.linhas %}<div class="linha">{% for boletim in linha.boletins %}
 <article class="boletim">
-    <table class="cabecalho-principal" role="presentation"><tr>
-        <td class="col-logo"><img class="img-logo-sgp" src="{% static 'boletim/relatorios/imagens/logo-sme.png' %}" alt="Logo SGP"></td>
-        <td class="cabecalho-titulos"><div class="cabecalho-titulo-01">BOLETIM ESCOLAR - {{ boletim.dados.ano_letivo }}</div><div class="cabecalho-titulo-02">SECRETARIA MUNICIPAL DE EDUCAÇÃO</div><div class="cabecalho-titulo-02">{{ boletim.dados.dre_nome }}</div><div class="cabecalho-titulo-02">{{ boletim.dados.ue_nome }}</div></td>
-    </tr></table>
-    <table class="cabecalho-relatorio margin-top" role="presentation"><tr><td class="col-metade">Estudante: {{ boletim.nome_aluno }}</td><td class="col-metade">Ciclo: {{ boletim.dados.ciclo }}</td></tr></table>
-    <table class="cabecalho-relatorio" role="presentation"><tr><td>Código EOL: {{ boletim.dados.aluno_codigo }}</td><td>Turma: {{ boletim.dados.turma_relatorio }}</td><td>Frequência Global: {{ boletim.frequencia_global }}</td></tr></table>
+    <div class="cabecalho-principal">
+        <div class="col-logo"><img class="img-logo-sgp" src="{% static 'boletim/relatorios/imagens/logo-sme.png' %}" alt="Logo SGP"></div>
+        <div class="cabecalho-titulos"><div class="cabecalho-titulo-01">BOLETIM ESCOLAR - {{ boletim.dados.ano_letivo }}</div><div class="cabecalho-titulo-02">SECRETARIA MUNICIPAL DE EDUCAÇÃO</div><div class="cabecalho-titulo-02">{{ boletim.dados.dre_nome }}</div><div class="cabecalho-titulo-02">{{ boletim.dados.ue_nome }}</div></div>
+    </div>
+    <div class="cabecalho-relatorio margin-top"><div class="col-metade">Estudante: {{ boletim.nome_aluno }}</div><div class="col-metade">Ciclo: {{ boletim.dados.ciclo }}</div></div>
+    <div class="cabecalho-relatorio"><div>Código EOL: {{ boletim.dados.aluno_codigo }}</div><div>Turma: {{ boletim.dados.turma_relatorio }}</div><div>Frequência Global: {{ boletim.frequencia_global }}</div></div>
     <table class="tabela margin-top"><colgroup><col class="col-componente">{% for periodo in boletim.periodos %}<col><col>{% endfor %}</colgroup><thead>
         <tr class="titulo"><th scope="col" rowspan="2" class="componente sem-borda-bottom">Componentes curriculares</th>{% for periodo in boletim.periodos %}<th scope="colgroup" colspan="2" class="{% if boletim.periodos|length <= 3 %}centro-bimestre-eja{% else %}centro-bimestre{% endif %}">{% if periodo == 0 %}Final{% else %}{{ periodo }}° Bim.{% endif %}</th>{% endfor %}</tr>
         <tr class="titulo">{% for periodo in boletim.periodos %}<th scope="col" class="{% if boletim.periodos|length <= 3 %}centro-titulo-eja{% else %}centro-titulo{% endif %} sem-borda-bottom">{% if boletim.usa_conceito %}Conc.{% else %}Nota{% endif %}</th><th scope="col" class="{% if boletim.periodos|length <= 3 %}centro-titulo-eja{% else %}centro-titulo{% endif %} sem-borda-bottom">%</th>{% endfor %}</tr>
@@ -161,10 +162,10 @@
     {% for componente in grupo.componentes %}<tr><th scope="row" class="valor-titulo">{{ componente.nome }}</th>{% for periodo in componente.periodos %}<td class="{% if boletim.periodos|length <= 3 %}centro-valor-eja{% else %}centro-valor{% endif %}">{{ periodo.nota }}</td>{% if not componente.eh_regencia %}<td class="{% if boletim.periodos|length <= 3 %}centro-valor-eja{% else %}centro-valor{% endif %}">{{ periodo.frequencia }}</td>{% elif componente.primeira_linha_regencia %}<td class="{% if boletim.periodos|length <= 3 %}centro-valor-eja{% else %}centro-valor{% endif %}" rowspan="{{ componente.linhas_regencia }}">{{ periodo.frequencia }}</td>{% endif %}{% endfor %}</tr>{% endfor %}
     </tbody></table>{% endfor %}
     {% if boletim.exibe_legenda %}<p class="legenda">Legenda: F:Frequente - NF:Não Frequente - P:Plenamente Satisfatório - S:Satisfatório - NS:Não Satisfatório</p>{% endif %}
-    {% if boletim.parecer_conclusivo %}<table class="tabela parecer margin-top" role="presentation"><tr><td>Parecer Conclusivo: {{ boletim.parecer_conclusivo }}</td></tr></table>{% endif %}
+    {% if boletim.parecer_conclusivo %}<div class="tabela parecer margin-top">Parecer Conclusivo: {{ boletim.parecer_conclusivo }}</div>{% endif %}
     {% if boletim.exibe_recomendacoes and boletim.recomendacoes_aluno %}<table class="tabela-recomendacoes"><tr><th scope="col" class="recomendacoes-titulo">Recomendações ao estudante</th></tr><tr><td>{{ boletim.recomendacoes_aluno|safe }}</td></tr></table>{% endif %}
     {% if boletim.exibe_recomendacoes and boletim.recomendacoes_familia %}<table class="tabela-recomendacoes"><tr><th scope="col" class="recomendacoes-titulo">Recomendações a família</th></tr><tr><td>{{ boletim.recomendacoes_familia|safe }}</td></tr></table>{% endif %}
-    <table class="tabela-final" role="presentation"><tr><td>&nbsp;</td></tr><tr><td>&nbsp;</td></tr></table>
+    <div class="tabela-final"><div class="linha-assinatura">&nbsp;</div><div class="linha-assinatura">&nbsp;</div></div>
 </article>
 {% endfor %}</div>{% endfor %}
 </section>
