@@ -163,12 +163,9 @@ class BoletimService:
         regencias_por_codigo: dict[
             tuple[str, int | None], dict[str, object]
         ] = {}
-        registros_por_componente: dict[int, list[Boletim]] = {}
-        for registro in registros:
-            if registro.componente_codigo is not None:
-                registros_por_componente.setdefault(
-                    registro.componente_codigo, []
-                ).append(registro)
+        registros_por_componente = (
+            BoletimService._indexar_registros_por_componente(registros)
+        )
         for registro in registros:
             if registro.regencia and registro.componentes_regencia:
                 BoletimService._agrupar_regencia_pai(
@@ -251,6 +248,26 @@ class BoletimService:
                 regencias_por_codigo
             ),
         }
+
+    @staticmethod
+    def _indexar_registros_por_componente(
+        registros: list[Boletim],
+    ) -> dict[int, list[Boletim]]:
+        """Indexa registros que possuem código de componente.
+
+        Args:
+            registros: Linhas do boletim a serem indexadas.
+
+        Returns:
+            Registros agrupados pelo código do componente curricular.
+        """
+        registros_por_componente: dict[int, list[Boletim]] = {}
+        for registro in registros:
+            if registro.componente_codigo is not None:
+                registros_por_componente.setdefault(
+                    registro.componente_codigo, []
+                ).append(registro)
+        return registros_por_componente
 
     @staticmethod
     def _dados_bimestre(

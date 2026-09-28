@@ -112,7 +112,16 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
                                     "frequencia_global": "100.00%",
                                     "periodos": (1, 2, 3, 4, 0),
                                     "usa_conceito": False,
-                                    "grupos": [],
+                                    "grupos": [
+                                        {
+                                            "componentes": [
+                                                {
+                                                    "nome": "Matemática",
+                                                    "periodos": [],
+                                                }
+                                            ]
+                                        }
+                                    ],
                                     "exibe_legenda": False,
                                     "parecer_conclusivo": "",
                                     "recomendacoes_aluno": "<p>Teste</p>",
@@ -144,6 +153,10 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
         self.assertIn('<div class="linha">', html)
         self.assertIn("height: 9cm", html)
         self.assertIn(".por-1 .centro-valor", html)
+        self.assertIn('role="presentation"', html)
+        self.assertIn('scope="colgroup"', html)
+        self.assertIn('scope="row"', html)
+        self.assertNotIn(' width="', html)
         self.assertNotIn("overflow: hidden", html)
         self.assertIn("<p>Teste</p>", html)
         self.assertNotIn('<td width="10%"></td>', html)
