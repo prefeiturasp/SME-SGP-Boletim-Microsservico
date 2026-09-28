@@ -12,6 +12,30 @@ _URL_COLETIVA = "/api/boletim/"
 _URL_PDF = "/api/boletim/pdf/"
 
 
+def _boletim() -> dict[str, object]:
+    """Cria um boletim mínimo válido para os testes da view."""
+    return {
+        "dados_aluno": {
+            "ano_letivo": 2026,
+            "modalidade_codigo": 5,
+            "semestre": 1,
+            "dre_codigo": "108200",
+            "dre_nome": "DRE",
+            "ue_codigo": "094501",
+            "ue_nome": "UE",
+            "turma_codigo": "1234567",
+            "turma_nome": "Turma",
+            "ciclo": None,
+            "aluno_codigo": 123,
+            "numero_chamada": None,
+            "aluno_nome": "Estudante",
+            "nome_social": None,
+        },
+        "componentes": [],
+        "regencias": [],
+    }
+
+
 def _cliente_autenticado() -> APIClient:
     """Cria um cliente com a API key definida nas configurações."""
     client = APIClient()
@@ -31,7 +55,7 @@ class TestBoletinsView(TestCase):
     def test_retorna_boletins_de_varios_alunos(self, service_class) -> None:
         """Aceita vários códigos de aluno e retorna uma lista."""
         service = service_class.return_value
-        service.listar_boletins.return_value = []
+        service.listar_boletins.return_value = [_boletim()]
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -47,7 +71,7 @@ class TestBoletinsView(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), [])
+        self.assertEqual(len(response.json()), 1)
         service.listar_boletins.assert_called_once_with(
             ano_letivo=2026,
             dre_codigo="108200",
@@ -64,7 +88,7 @@ class TestBoletinsView(TestCase):
     def test_sem_alunos_codigo_solicita_todos(self, service_class) -> None:
         """Usa uma lista vazia para selecionar todos os alunos."""
         service = service_class.return_value
-        service.listar_boletins.return_value = []
+        service.listar_boletins.return_value = [_boletim()]
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -86,7 +110,7 @@ class TestBoletinsView(TestCase):
     def test_permite_incluir_estudantes_inativos(self, service_class) -> None:
         """Encaminha a opção de imprimir estudantes inativos."""
         service = service_class.return_value
-        service.listar_boletins.return_value = []
+        service.listar_boletins.return_value = [_boletim()]
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -119,7 +143,7 @@ class TestBoletinsView(TestCase):
     def test_aceita_semestre_zero(self, service_class) -> None:
         """Encaminha semestre zero na consulta coletiva."""
         service = service_class.return_value
-        service.listar_boletins.return_value = []
+        service.listar_boletins.return_value = [_boletim()]
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -137,6 +161,31 @@ class TestBoletinsView(TestCase):
             service.listar_boletins.call_args.kwargs["semestre"], 0
         )
 
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_retorna_sem_conteudo_quando_nao_ha_dados(
+        self, service_class
+    ) -> None:
+        """Retorna HTTP 204 sem corpo quando a consulta está vazia."""
+        service_class.return_value.listar_boletins.return_value = []
+
+        response = self.client.get(
+            _URL_COLETIVA,
+            {
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
+                "semestre": 1,
+                "modalidade": 5,
+            },
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
+        self.assertEqual(
+            response["X-Mensagem"],
+            "Alunos da turma não foram encontrados.",
+        )
+
 
 class TestBoletinsPdfView(TestCase):
     """Valida o contrato HTTP da geração coletiva em PDF."""
@@ -151,7 +200,7 @@ class TestBoletinsPdfView(TestCase):
         self, service_class, gerador_class
     ) -> None:
         """Gera PDF inline e usa duas vias por página como no relatório."""
-        boletins: list[dict[str, object]] = []
+        boletins = [_boletim()]
         service_class.return_value.listar_boletins.return_value = boletins
         gerador_class.return_value.gerar.return_value = b"%PDF-teste"
 
@@ -184,7 +233,7 @@ class TestBoletinsPdfView(TestCase):
         self, service_class, gerador_class
     ) -> None:
         """Encaminha estudantes inativos para a consulta do PDF."""
-        service_class.return_value.listar_boletins.return_value = []
+        service_class.return_value.listar_boletins.return_value = [_boletim()]
         gerador_class.return_value.gerar.return_value = b"%PDF-teste"
         filtros = self._filtros()
         filtros["considera_inativo"] = True
@@ -197,6 +246,24 @@ class TestBoletinsPdfView(TestCase):
                 "considera_inativo"
             ]
         )
+
+    @patch("apps.boletim.api.views.GeradorBoletinsPdf")
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_pdf_retorna_sem_conteudo_quando_nao_ha_dados(
+        self, service_class, gerador_class
+    ) -> None:
+        """Retorna HTTP 204 sem corpo nem PDF quando a consulta está vazia."""
+        service_class.return_value.listar_boletins.return_value = []
+
+        response = self.client.get(_URL_PDF, self._filtros())
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
+        self.assertEqual(
+            response["X-Mensagem"],
+            "Alunos da turma não foram encontrados.",
+        )
+        gerador_class.return_value.gerar.assert_not_called()
 
     @staticmethod
     def _filtros() -> dict[str, int | str]:

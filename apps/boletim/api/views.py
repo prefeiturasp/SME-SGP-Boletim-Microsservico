@@ -8,7 +8,9 @@ from drf_spectacular.utils import (
 )
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.status import HTTP_204_NO_CONTENT
 
+from apps.boletim.constantes import MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS
 from apps.boletim.relatorios.gerador_pdf import GeradorBoletinsPdf
 from apps.boletim.serializers import (
     BoletimAlunoResponseSerializer,
@@ -24,7 +26,15 @@ class BoletinsView(BaseAPIView):
 
     @extend_schema(
         parameters=[FiltrosBoletinsSerializer],
-        responses={200: BoletimAlunoResponseSerializer(many=True)},
+        responses={
+            200: BoletimAlunoResponseSerializer(many=True),
+            204: OpenApiResponse(
+                description=(
+                    "Nenhum aluno encontrado. A mensagem é retornada no "
+                    "cabeçalho `X-Mensagem`."
+                )
+            ),
+        },
         operation_id="boletim_listar_varios_alunos",
         tags=["Boletim"],
     )
@@ -50,6 +60,11 @@ class BoletinsView(BaseAPIView):
             turma_codigo=filtros.validated_data.get("turma_codigo"),
             bimestre=filtros.validated_data.get("bimestre"),
         )
+        if not dados:
+            return Response(
+                status=HTTP_204_NO_CONTENT,
+                headers={"X-Mensagem": MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS},
+            )
         return Response(BoletimAlunoResponseSerializer(dados, many=True).data)
 
 
@@ -62,7 +77,13 @@ class BoletinsPdfView(BaseAPIView):
             200: OpenApiResponse(
                 response=OpenApiTypes.BINARY,
                 description="Arquivo PDF com os boletins selecionados.",
-            )
+            ),
+            204: OpenApiResponse(
+                description=(
+                    "Nenhum aluno encontrado. A mensagem é retornada no "
+                    "cabeçalho `X-Mensagem`."
+                )
+            ),
         },
         operation_id="boletim_gerar_pdf_varios_alunos",
         tags=["Boletim"],
@@ -82,6 +103,11 @@ class BoletinsPdfView(BaseAPIView):
             turma_codigo=filtros.validated_data.get("turma_codigo"),
             bimestre=filtros.validated_data.get("bimestre"),
         )
+        if not dados:
+            return Response(
+                status=HTTP_204_NO_CONTENT,
+                headers={"X-Mensagem": MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS},
+            )
         pdf = GeradorBoletinsPdf().gerar(
             dados,
             boletins_por_pagina=filtros.validated_data["boletins_por_pagina"],
