@@ -1,7 +1,8 @@
 """Prepara os dados dos boletins para o template PDF."""
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
+from datetime import date, datetime
 from decimal import Decimal
 from html import unescape
 from typing import TypedDict, cast
@@ -475,16 +476,32 @@ def _formatar_linhas_regencia(
         Linhas formatadas das disciplinas da regência.
     """
     frequencias = _periodos_por_numero(regencia.get("bimestres"))
+    bimestre_atual_frequencia = _obter_bimestre_fechamento_atual(
+        frequencias.values()
+    )
     componentes = _lista_mapas(regencia.get("componentes"))
     linhas: list[dict[str, object]] = []
     for indice, componente in enumerate(componentes):
         por_numero = _periodos_por_numero(componente.get("bimestres"))
+        bimestre_atual_nota = _obter_bimestre_fechamento_atual(
+            por_numero.values()
+        )
+        possui_periodo_ano_atual = _possui_periodo_ano_atual(
+            por_numero.values()
+        )
         linha: dict[str, object] = {
             "nome": componente.get("disciplina_nome_sgp")
             or componente.get("disciplina_nome")
             or "",
             "periodos": [
-                {"nota": _formatar_nota(por_numero.get(periodo))}
+                {
+                    "nota": _formatar_nota(
+                        por_numero.get(periodo),
+                        periodo,
+                        bimestre_atual_nota,
+                        possui_periodo_ano_atual,
+                    )
+                }
                 for periodo in periodos
             ],
             "eh_regencia": True,
@@ -495,7 +512,12 @@ def _formatar_linhas_regencia(
             periodos_linha = cast(list[dict[str, object]], linha["periodos"])
             for indice_periodo, periodo in enumerate(periodos):
                 periodos_linha[indice_periodo]["frequencia"] = (
-                    _formatar_frequencia(frequencias.get(periodo))
+                    _formatar_frequencia(
+                        frequencias.get(periodo),
+                        periodo,
+                        bimestre_atual_frequencia,
+                        bool(regencia.get("registra_frequencia", True)),
+                    )
                 )
         linhas.append(linha)
     return linhas
@@ -515,14 +537,27 @@ def _formatar_componente(
         Nome do componente e nota/frequência formatadas por período.
     """
     por_numero = _periodos_por_numero(componente.get("bimestres"))
+    bimestre_atual = _obter_bimestre_fechamento_atual(por_numero.values())
+    possui_periodo_ano_atual = _possui_periodo_ano_atual(por_numero.values())
+    registra_frequencia = bool(componente.get("registra_frequencia", True))
     return {
         "nome": componente.get("disciplina_nome_sgp")
         or componente.get("disciplina_nome")
         or "",
         "periodos": [
             {
-                "nota": _formatar_nota(por_numero.get(periodo)),
-                "frequencia": _formatar_frequencia(por_numero.get(periodo)),
+                "nota": _formatar_nota(
+                    por_numero.get(periodo),
+                    periodo,
+                    bimestre_atual,
+                    possui_periodo_ano_atual,
+                ),
+                "frequencia": _formatar_frequencia(
+                    por_numero.get(periodo),
+                    periodo,
+                    bimestre_atual,
+                    registra_frequencia,
+                ),
             }
             for periodo in periodos
         ],
@@ -543,49 +578,132 @@ def _periodos_por_numero(valor: object) -> dict[int, Mapping[str, object]]:
     }
 
 
-def _formatar_nota(periodo: Mapping[str, object] | None) -> str:
+def _formatar_nota(
+    periodo: Mapping[str, object] | None,
+    bimestre: int,
+    bimestre_atual: int | None,
+    possui_periodo_ano_atual: bool,
+) -> str:
     """Formata a nota, o conceito ou a síntese de um período.
 
     Args:
         periodo: Dados do bimestre, ou `None` quando não houver período.
+        bimestre: Número do período; zero representa o resultado final.
+        bimestre_atual: Último bimestre cujo fechamento já iniciou.
+        possui_periodo_ano_atual: Indica calendário do ano corrente.
 
     Returns:
         Conceito ou síntese quando presentes, nota com uma casa decimal
         quando numérica, ou string vazia quando não houver valor.
     """
-    if not periodo:
-        return ""
-    conceito = periodo.get("conceito")
+    conceito = periodo.get("conceito") if periodo else None
     if conceito:
         return str(conceito)
-    sintese = periodo.get("sintese")
+    sintese = periodo.get("sintese") if periodo else None
     if sintese:
         return str(sintese)
-    nota = periodo.get("nota")
+    nota = periodo.get("nota") if periodo else None
     if nota is None:
+        if bimestre == 0:
+            return "-"
+        if (
+            bimestre_atual is not None
+            and bimestre > bimestre_atual
+            and possui_periodo_ano_atual
+        ):
+            return "-"
         return ""
     decimal = Decimal(str(nota))
     return f"{decimal:.1f}"
 
 
-def _formatar_frequencia(periodo: Mapping[str, object] | None) -> str:
+def _formatar_frequencia(
+    periodo: Mapping[str, object] | None,
+    bimestre: int,
+    bimestre_atual: int | None,
+    registra_frequencia: bool,
+) -> str:
     """Formata o percentual de frequência de um período.
 
     Args:
         periodo: Dados do bimestre, ou `None` quando não houver período.
+        bimestre: Número do período; zero representa o resultado final.
+        bimestre_atual: Último bimestre cujo fechamento já iniciou.
+        registra_frequencia: Indica se o componente aceita frequência.
 
     Returns:
         Percentual de frequência formatado, ou string vazia quando não
         houver aulas registradas.
     """
+    if not registra_frequencia:
+        return "-"
     if not periodo:
-        return ""
+        return (
+            "-"
+            if bimestre_atual is not None
+            and bimestre > bimestre_atual
+            and bimestre > 0
+            else ""
+        )
     percentual = _percentual(
         periodo.get("total_aulas"),
         periodo.get("total_ausencias"),
         periodo.get("total_compensacoes"),
     )
-    return f"{percentual}%" if percentual else ""
+    if percentual:
+        return f"{percentual}%"
+    if (
+        bimestre_atual is not None
+        and bimestre > bimestre_atual
+        and bimestre > 0
+    ):
+        return "-"
+    return ""
+
+
+def _obter_bimestre_fechamento_atual(
+    periodos: Iterable[Mapping[str, object]],
+) -> int | None:
+    """Obtém o último bimestre cujo fechamento já iniciou."""
+    hoje = timezone.localdate()
+    iniciados: list[int] = []
+    possui_fechamento = False
+    for periodo in periodos:
+        fechamento_inicio = _data(periodo.get("fechamento_inicio"))
+        if fechamento_inicio is None:
+            continue
+        possui_fechamento = True
+        if fechamento_inicio <= hoje:
+            iniciados.append(_inteiro(periodo.get("bimestre")))
+    if iniciados:
+        return max(iniciados)
+    return 0 if possui_fechamento else None
+
+
+def _possui_periodo_ano_atual(
+    periodos: Iterable[Mapping[str, object]],
+) -> bool:
+    """Indica se algum período escolar começa no ano corrente."""
+    ano_atual = timezone.localdate().year
+    for periodo in periodos:
+        inicio = _data(periodo.get("periodo_inicio"))
+        if inicio is not None and inicio.year == ano_atual:
+            return True
+    return False
+
+
+def _data(valor: object) -> date | None:
+    """Normaliza datas do ORM ou de estruturas serializadas."""
+    if isinstance(valor, datetime):
+        return valor.date()
+    if isinstance(valor, date):
+        return valor
+    if isinstance(valor, str):
+        try:
+            return date.fromisoformat(valor[:10])
+        except ValueError:
+            return None
+    return None
 
 
 def _formatar_frequencia_global(
