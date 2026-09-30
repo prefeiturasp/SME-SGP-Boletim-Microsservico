@@ -10,6 +10,9 @@ from apps.boletim.repository import BoletimRepository
 
 _CAMPOS_SEM_DADOS = (
     "periodo_escolar_id",
+    "periodo_inicio",
+    "periodo_fim",
+    "fechamento_inicio",
     "componente_existia_no_periodo",
     "nota",
     "conceito_id",
@@ -294,6 +297,9 @@ class BoletimService:
         return {
             "bimestre": registro.bimestre,
             "periodo_escolar_id": registro.periodo_escolar_id,
+            "periodo_inicio": registro.periodo_inicio,
+            "periodo_fim": registro.periodo_fim,
+            "fechamento_inicio": registro.fechamento_inicio,
             "componente_existia_no_periodo": (
                 registro.componente_existia_no_periodo
             ),

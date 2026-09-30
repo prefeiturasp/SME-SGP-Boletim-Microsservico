@@ -1,5 +1,8 @@
 """Testes do apresentador do relatório de boletins."""
 
+from datetime import date
+from unittest.mock import patch
+
 from django.test import SimpleTestCase
 
 from apps.boletim.relatorios.apresentador import montar_contexto_pdf
@@ -55,6 +58,79 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         self.assertEqual(componente["periodos"][0]["nota"], "S")
         self.assertEqual(componente["periodos"][0]["frequencia"], "95.00%")
         self.assertEqual(item["frequencia_global"], "90.00%")
+
+    @patch(
+        "apps.boletim.relatorios.apresentador.timezone.localdate",
+        return_value=date(2026, 6, 1),
+    )
+    def test_exibe_hifen_em_bimestre_com_fechamento_futuro(
+        self,
+        _: object,
+    ) -> None:
+        """Exibe hífen quando o fechamento do bimestre ainda não iniciou."""
+        boletim = self._boletim(1)
+        componente = boletim["componentes"][0]
+        componente["bimestres"] = [
+            {
+                "bimestre": 1,
+                "periodo_inicio": date(2026, 2, 1),
+                "fechamento_inicio": date(2026, 4, 20),
+            },
+            {
+                "bimestre": 2,
+                "periodo_inicio": date(2026, 5, 1),
+                "fechamento_inicio": date(2026, 7, 20),
+            },
+        ]
+
+        contexto = montar_contexto_pdf([boletim], 1)
+
+        item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
+        periodos = item["grupos"][0]["componentes"][0]["periodos"]
+        self.assertEqual(periodos[0]["nota"], "")
+        self.assertEqual(periodos[0]["frequencia"], "")
+        self.assertEqual(periodos[1]["nota"], "-")
+        self.assertEqual(periodos[1]["frequencia"], "-")
+
+    def test_exibe_hifen_na_frequencia_quando_componente_nao_registra(
+        self,
+    ) -> None:
+        """Marca como não aplicável a frequência do componente."""
+        boletim = self._boletim(1)
+        componente = boletim["componentes"][0]
+        componente["registra_frequencia"] = False
+        componente["bimestres"].append(
+            {"bimestre": 0, "nota": 7, "conceito": None}
+        )
+
+        contexto = montar_contexto_pdf([boletim], 1)
+
+        item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
+        periodos = item["grupos"][0]["componentes"][0]["periodos"]
+        self.assertTrue(
+            all(periodo["frequencia"] == "-" for periodo in periodos)
+        )
+
+    def test_exibe_hifen_na_nota_final_ausente(self) -> None:
+        """Diferencia nota final ausente de uma célula comum vazia."""
+        boletim = self._boletim(1)
+        primeiro = boletim["componentes"][0]
+        primeiro["bimestres"].append(
+            {"bimestre": 0, "nota": 8, "conceito": None}
+        )
+        boletim["componentes"].append(
+            {
+                "disciplina_nome_sgp": "Arte",
+                "bimestres": [{"bimestre": 0, "nota": None}],
+            }
+        )
+
+        contexto = montar_contexto_pdf([boletim], 1)
+
+        item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
+        componentes = item["grupos"][0]["componentes"]
+        arte = next(item for item in componentes if item["nome"] == "Arte")
+        self.assertEqual(arte["periodos"][-1]["nota"], "-")
 
     def test_exibe_ciclo_consolidado_no_cabecalho(self) -> None:
         """Exibe no cabeçalho o ciclo recebido da turma consolidada."""
