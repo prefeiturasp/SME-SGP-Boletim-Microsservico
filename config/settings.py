@@ -86,6 +86,18 @@ if "test" in sys.argv or os.environ.get(
 
 API_KEY_HEADER = os.environ.get("API_KEY_HEADER", "x-api-key")
 API_KEY = os.environ.get("API_KEY", "dev-key-default")
+BEARER_TOKEN_SIGNING_KEY = os.environ.get(
+    "BEARER_TOKEN_SIGNING_KEY", ""
+).replace("\\n", "\n")
+BEARER_TOKEN_ISSUER = os.environ.get("BEARER_TOKEN_ISSUER", "")
+BEARER_TOKEN_AUDIENCE = os.environ.get("BEARER_TOKEN_AUDIENCE", "")
+BEARER_TOKEN_ALGORITHMS = [
+    algorithm.strip()
+    for algorithm in os.environ.get("BEARER_TOKEN_ALGORITHMS", "HS256").split(
+        ","
+    )
+    if algorithm.strip()
+]
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
@@ -93,6 +105,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "apps.core.authentication.ApiKeyAuthentication",
+        "apps.core.authentication.BearerTokenAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -102,16 +115,6 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Microsserviço de boletim do SGP",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
-    "APPEND_COMPONENTS": {
-        "securitySchemes": {
-            "ApiKey": {
-                "type": "apiKey",
-                "name": API_KEY_HEADER,
-                "in": "header",
-            }
-        }
-    },
-    "SECURITY": [{"ApiKey": []}],
 }
 
 TEST_RUNNER = "config.test_runner.BoletimTestRunner"

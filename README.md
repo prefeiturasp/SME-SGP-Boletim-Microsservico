@@ -10,7 +10,7 @@ em PDF, mantendo as regras de exibição do SME-ServidorRelatorios.
 | App | Responsabilidade | Prefixo API |
 |-----|------------------|-------------|
 | `apps.boletim` | Consulta, organização e geração dos boletins escolares | `/api/boletim/` |
-| `apps.core` | Autenticação por API key, health check e infraestrutura comum | `/api/boletim/` |
+| `apps.core` | Autenticação por API key ou JWT, health check e infraestrutura comum | `/api/boletim/` |
 
 ### Modelo ETL Coberto
 
@@ -89,13 +89,17 @@ A documentação HTML será gerada em `docs/_build/html/index.html`.
 
 ## Autenticação
 
-Os endpoints do domínio exigem o header configurado em `API_KEY_HEADER` com o
-valor de `API_KEY`. O health check e a documentação OpenAPI são públicos.
+Os endpoints do domínio aceitam a API key configurada ou um JWT no header
+`Authorization: Bearer <token>`. O health check e a documentação OpenAPI são
+públicos. O JWT tem assinatura, expiração, emissor e audiência validados.
 
 Exemplo:
 
 ```bash
 curl -H "X-API-Key: dev-key-default" \
+  "http://localhost:8001/api/boletim/?ano_letivo=2026&dre_codigo=108200&ue_codigo=094501&semestre=1&modalidade=5"
+
+curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
   "http://localhost:8001/api/boletim/?ano_letivo=2026&dre_codigo=108200&ue_codigo=094501&semestre=1&modalidade=5"
 ```
 
@@ -146,6 +150,10 @@ curl -H "X-API-Key: dev-key-default" \
 | `DJANGO_ALLOWED_HOSTS` | `*` | Hosts aceitos pelo Django. |
 | `API_KEY` | `dev-key-default` | Credencial exigida pelos endpoints protegidos. |
 | `API_KEY_HEADER` | `X-API-Key` | Nome do header da credencial. |
+| `BEARER_TOKEN_SIGNING_KEY` | Definido em `.env.example` | Segredo ou chave pública usada para validar a assinatura do JWT. |
+| `BEARER_TOKEN_ISSUER` | `aplicacao-dotnet` | Emissor (`iss`) aceito no JWT. |
+| `BEARER_TOKEN_AUDIENCE` | `sme-sgp-boletim-ms` | Audiência (`aud`) exigida no JWT. |
+| `BEARER_TOKEN_ALGORITHMS` | `HS256` | Algoritmos aceitos, separados por vírgula; use `RS256` com chave pública para tokens RSA. |
 | `PORT_WEB` | `8001` | Porta HTTP do ambiente de desenvolvimento. |
 | `PORT_DEBUGPY` | `5678` | Porta reservada para depuração remota. |
 | `URL_BANCO_BOLETIM` | — | URL de conexão com o PostgreSQL do boletim. |

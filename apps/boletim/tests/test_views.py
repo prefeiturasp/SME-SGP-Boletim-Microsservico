@@ -1,9 +1,11 @@
 """Testes das views de boletim."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import jwt
 from django.conf import settings
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.boletim.serializers import MODALIDADES_CHOICES
@@ -138,6 +140,44 @@ class TestBoletinsView(TestCase):
         self.assertIn("ue_codigo", response.json())
         self.assertIn("semestre", response.json())
         self.assertIn("modalidade", response.json())
+
+    @override_settings(
+        BEARER_TOKEN_SIGNING_KEY="segredo-de-integracao-com-32-chars",
+        BEARER_TOKEN_ISSUER="aplicacao-dotnet",
+        BEARER_TOKEN_AUDIENCE="boletim-api",
+        BEARER_TOKEN_ALGORITHMS=["HS256"],
+    )
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_aceita_token_bearer_em_alternativa_a_api_key(
+        self, service_class
+    ) -> None:
+        """Autoriza a consulta com JWT sem exigir API key."""
+        service_class.return_value.listar_boletins.return_value = [_boletim()]
+        token = jwt.encode(
+            {
+                "sub": "aplicacao-consumidora",
+                "iss": "aplicacao-dotnet",
+                "aud": "boletim-api",
+                "exp": datetime.now(UTC) + timedelta(minutes=5),
+            },
+            "segredo-de-integracao-com-32-chars",
+            algorithm="HS256",
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        response = client.get(
+            _URL_COLETIVA,
+            {
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
+                "semestre": 1,
+                "modalidade": 5,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
 
     @patch("apps.boletim.api.views.BoletimService")
     def test_aceita_semestre_zero(self, service_class) -> None:
@@ -392,6 +432,23 @@ class TestDocumentacaoBoletim(TestCase):
         self.assertEqual(
             respostas["204"]["headers"]["X-Mensagem"]["schema"]["type"],
             "string",
+        )
+
+    def test_documenta_api_key_ou_bearer_como_alternativas(self) -> None:
+        """Publica os dois esquemas de autenticação em relação OU."""
+        response = APIClient().get(
+            "/boletim/api/schema/",
+            HTTP_ACCEPT="application/json",
+        )
+
+        schema = response.json()
+        self.assertEqual(
+            schema["paths"]["/api/boletim/"]["get"]["security"],
+            [{"ApiKey": []}, {"BearerAuth": []}],
+        )
+        self.assertEqual(
+            schema["components"]["securitySchemes"]["BearerAuth"]["scheme"],
+            "bearer",
         )
 
 
