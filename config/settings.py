@@ -45,8 +45,6 @@ def _parse_db_url(url: Any) -> dict[str, Any]:
 
 
 INSTALLED_APPS = [
-    "django.contrib.contenttypes",
-    "django.contrib.auth",
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
@@ -76,13 +74,36 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {"default": _parse_db_url(os.environ.get("URL_BANCO_BOLETIM", ""))}
-if "test" in sys.argv or os.environ.get(
+_EM_TESTE = "test" in sys.argv or os.environ.get(
     "USE_SQLITE_TEST", "False"
-).lower() in ("true", "1"):
+).lower() in ("true", "1")
+if _EM_TESTE:
     DATABASES["default"] = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
     }
+
+KEYDB_URL = os.environ.get("KEYDB_URL", "")
+KEYDB_ENABLED = bool(KEYDB_URL and not _EM_TESTE)
+CACHE_BOLETIM_TTL = int(os.environ.get("CACHE_BOLETIM_TTL", "1800"))
+CACHE_LOCK_TTL = int(os.environ.get("CACHE_LOCK_TTL", "30"))
+CACHE_LOCK_WAIT_TIMEOUT = float(os.environ.get("CACHE_LOCK_WAIT_TIMEOUT", "2"))
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    },
+    "keydb": (
+        {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": KEYDB_URL,
+            "KEY_FUNCTION": "apps.core.cache.preservar_chave_cache",
+        }
+        if KEYDB_ENABLED
+        else {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
+    ),
+}
 
 API_KEY_HEADER = os.environ.get("API_KEY_HEADER", "x-api-key")
 API_KEY = os.environ.get("API_KEY", "dev-key-default")
@@ -108,6 +129,7 @@ REST_FRAMEWORK = {
         "apps.core.authentication.BearerTokenAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "UNAUTHENTICATED_USER": None,
 }
 
 SPECTACULAR_SETTINGS = {

@@ -10,7 +10,7 @@ em PDF, mantendo as regras de exibição do SME-ServidorRelatorios.
 | App | Responsabilidade | Prefixo API |
 |-----|------------------|-------------|
 | `apps.boletim` | Consulta, organização e geração dos boletins escolares | `/api/boletim/` |
-| `apps.core` | Autenticação por API key ou JWT, health check e infraestrutura comum | `/api/boletim/` |
+| `apps.core` | Autenticação por API key ou JWT, cache compartilhado, health check e infraestrutura comum | `/api/boletim/` |
 
 ### Modelo ETL Coberto
 
@@ -26,6 +26,7 @@ microsserviço não cria migrations para essa estrutura.
 
 - Python 3.12+
 - PostgreSQL com a `mv_boletim` criada e alimentada pelo ETL
+- KeyDB para o cache compartilhado das consultas de boletim
 - Docker e Docker Compose para execução em container
 
 ---
@@ -158,6 +159,10 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 | `PORT_DEBUGPY` | `5678` | Porta reservada para depuração remota. |
 | `URL_BANCO_BOLETIM` | — | URL de conexão com o PostgreSQL do boletim. |
 | `DB_POOL_SIZE` | `5` | Quantidade de conexões persistentes do pool. |
+| `KEYDB_URL` | `redis://keydb:6379/0` | URL da instância KeyDB usada pelo cache de boletins. |
+| `CACHE_BOLETIM_TTL` | `1800` | Validade do cache de boletins, em segundos. |
+| `CACHE_LOCK_TTL` | `30` | Validade máxima de um lock distribuído, em segundos. |
+| `CACHE_LOCK_WAIT_TIMEOUT` | `2` | Espera máxima pela aquisição de um lock, em segundos. |
 
 ### SME Sidecar SDK
 

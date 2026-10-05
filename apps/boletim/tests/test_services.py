@@ -46,6 +46,76 @@ class TestBoletimService(SimpleTestCase):
             turma_codigo=None,
         )
 
+    def test_retorna_boletins_do_cache_sem_consultar_repository(self) -> None:
+        """Reutiliza o resultado consolidado encontrado no cache."""
+        repository = MagicMock()
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave.return_value = "chave"
+        cache_repository.obter.return_value = [{"cache": True}]
+
+        resultado = BoletimService(
+            repository,
+            cache_repository,
+        ).listar_boletins(
+            ano_letivo=2026,
+            dre_codigo="1",
+            ue_codigo="2",
+            semestre=1,
+            modalidade=5,
+            alunos_codigo=[456, 123],
+        )
+
+        self.assertEqual(resultado, [{"cache": True}])
+        repository.listar_boletins.assert_not_called()
+        cache_repository.armazenar.assert_not_called()
+
+    def test_armazena_resultado_quando_cache_nao_existe(self) -> None:
+        """Consulta a origem e armazena inclusive resultados vazios."""
+        repository = MagicMock()
+        repository.listar_boletins.return_value = []
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave.return_value = "chave"
+        cache_repository.obter.return_value = None
+
+        resultado = BoletimService(
+            repository,
+            cache_repository,
+        ).listar_boletins(
+            ano_letivo=2026,
+            dre_codigo="1",
+            ue_codigo="2",
+            semestre=1,
+            modalidade=5,
+            alunos_codigo=[],
+        )
+
+        self.assertEqual(resultado, [])
+        cache_repository.armazenar.assert_called_once_with("chave", [])
+
+    def test_rele_cache_apos_aguardar_lock_ocupado(self) -> None:
+        """Reutiliza o resultado produzido pela requisição concorrente."""
+        repository = MagicMock()
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave.return_value = "chave"
+        cache_repository.obter.side_effect = [None, [{"cache": True}]]
+        contexto_lock = cache_repository.bloquear.return_value
+        contexto_lock.__enter__.return_value = False
+
+        resultado = BoletimService(
+            repository,
+            cache_repository,
+        ).listar_boletins(
+            ano_letivo=2026,
+            dre_codigo="1",
+            ue_codigo="2",
+            semestre=1,
+            modalidade=5,
+            alunos_codigo=[123],
+        )
+
+        self.assertEqual(resultado, [{"cache": True}])
+        repository.listar_boletins.assert_not_called()
+
     def test_lista_boletins_retorna_vazio_sem_registros(self) -> None:
         """Retorna uma lista vazia quando não existem alunos no contexto."""
         repository = MagicMock()
