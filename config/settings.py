@@ -86,6 +86,7 @@ if _EM_TESTE:
 KEYDB_URL = os.environ.get("KEYDB_URL", "")
 KEYDB_ENABLED = bool(KEYDB_URL and not _EM_TESTE)
 CACHE_BOLETIM_TTL = int(os.environ.get("CACHE_BOLETIM_TTL", "1800"))
+CACHE_ABRANGENCIA_TTL = int(os.environ.get("CACHE_ABRANGENCIA_TTL", "300"))
 CACHE_LOCK_TTL = int(os.environ.get("CACHE_LOCK_TTL", "30"))
 CACHE_LOCK_WAIT_TIMEOUT = float(os.environ.get("CACHE_LOCK_WAIT_TIMEOUT", "2"))
 CACHES = {
@@ -107,6 +108,11 @@ CACHES = {
 
 API_KEY_HEADER = os.environ.get("API_KEY_HEADER", "x-api-key")
 API_KEY = os.environ.get("API_KEY", "dev-key-default")
+PEDAGOGICO_API_URL = os.environ.get("PEDAGOGICO_API_URL", "").rstrip("/")
+PEDAGOGICO_API_KEY = os.environ.get("PEDAGOGICO_API_KEY", "")
+PEDAGOGICO_API_KEY_HEADER = os.environ.get(
+    "PEDAGOGICO_API_KEY_HEADER", "x-api-eol-key"
+)
 BEARER_TOKEN_SIGNING_KEY = os.environ.get(
     "BEARER_TOKEN_SIGNING_KEY", ""
 ).replace("\\n", "\n")
@@ -121,6 +127,7 @@ BEARER_TOKEN_ALGORITHMS = [
 ]
 
 REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "apps.core.exceptions.exception_handler",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],

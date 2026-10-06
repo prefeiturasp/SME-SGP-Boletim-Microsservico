@@ -93,6 +93,9 @@ A documentação HTML será gerada em `docs/_build/html/index.html`.
 Os endpoints do domínio aceitam a API key configurada ou um JWT no header
 `Authorization: Bearer <token>`. O health check e a documentação OpenAPI são
 públicos. O JWT tem assinatura, expiração, emissor e audiência validados.
+Nas rotas de boletim, requisições com JWT também exigem as claims `login` e
+`perfil` e têm a abrangência vigente validada na API Pedagógica. Requisições
+internas autenticadas por API key não executam essa consulta.
 
 Exemplo:
 
@@ -151,6 +154,9 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 | `DJANGO_ALLOWED_HOSTS` | `*` | Hosts aceitos pelo Django. |
 | `API_KEY` | `dev-key-default` | Credencial exigida pelos endpoints protegidos. |
 | `API_KEY_HEADER` | `X-API-Key` | Nome do header da credencial. |
+| `PEDAGOGICO_API_URL` | — | URL base da API Pedagógica usada para consultar a abrangência vigente. |
+| `PEDAGOGICO_API_KEY` | — | Chave interna enviada à API Pedagógica. |
+| `PEDAGOGICO_API_KEY_HEADER` | `x-api-eol-key` | Header da chave de integração com a API Pedagógica. |
 | `BEARER_TOKEN_SIGNING_KEY` | Definido em `.env.example` | Segredo ou chave pública usada para validar a assinatura do JWT. |
 | `BEARER_TOKEN_ISSUER` | `aplicacao-dotnet` | Emissor (`iss`) aceito no JWT. |
 | `BEARER_TOKEN_AUDIENCE` | `sme-sgp-boletim-ms` | Audiência (`aud`) exigida no JWT. |
@@ -161,6 +167,7 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 | `DB_POOL_SIZE` | `5` | Quantidade de conexões persistentes do pool. |
 | `KEYDB_URL` | `redis://keydb:6379/0` | URL da instância KeyDB usada pelo cache de boletins. |
 | `CACHE_BOLETIM_TTL` | `1800` | Validade do cache de boletins, em segundos. |
+| `CACHE_ABRANGENCIA_TTL` | `300` | Validade da abrangência vigente por login e perfil, em segundos. |
 | `CACHE_LOCK_TTL` | `30` | Validade máxima de um lock distribuído, em segundos. |
 | `CACHE_LOCK_WAIT_TIMEOUT` | `2` | Espera máxima pela aquisição de um lock, em segundos. |
 
@@ -172,6 +179,8 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 | `SME_SERVICE_NAME` | `sme_sgp_boletim_ms` | Nome do serviço nos logs e traces. |
 | `SME_SERVICE_VERSION` | `0.1.0` | Versão publicada na telemetria. |
 | `SME_ENVIRONMENT` | `local` | Ambiente de execução. |
+| `SME_TIMEOUT_ENABLED` | `true` | Habilita o timeout padronizado dos clientes HTTP do SDK. |
+| `SME_TIMEOUT_SECONDS` | `5` | Timeout das chamadas HTTP realizadas pelo SME SDK. |
 | `SME_LOGGING_ENABLED` | `true` | Habilita os logs estruturados. |
 | `SME_LOG_LEVEL` | `INFO` | Nível mínimo dos logs. |
 | `SME_LOG_FORMAT` | `json` | Formato dos logs. |

@@ -9,6 +9,10 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.boletim.serializers import MODALIDADES_CHOICES
+from apps.core.abrangencia.exceptions import (
+    ServicoAbrangenciaIndisponivel,
+)
+from apps.core.abrangencia.models import Abrangencia, TipoAbrangencia
 
 _URL_COLETIVA = "/api/boletim/"
 _URL_PDF = "/api/boletim/pdf/"
@@ -147,15 +151,24 @@ class TestBoletinsView(TestCase):
         BEARER_TOKEN_AUDIENCE="boletim-api",
         BEARER_TOKEN_ALGORITHMS=["HS256"],
     )
+    @patch("apps.core.abrangencia.service.AbrangenciaClient.obter_vigente")
     @patch("apps.boletim.api.views.BoletimService")
     def test_aceita_token_bearer_em_alternativa_a_api_key(
-        self, service_class
+        self, service_class, obter_abrangencia
     ) -> None:
         """Autoriza a consulta com JWT sem exigir API key."""
         service_class.return_value.listar_boletins.return_value = [_boletim()]
+        obter_abrangencia.return_value = Abrangencia(
+            tipo=TipoAbrangencia.UE,
+            dres=frozenset(),
+            ues=frozenset({"094501"}),
+            turmas=frozenset(),
+        )
         token = jwt.encode(
             {
                 "sub": "aplicacao-consumidora",
+                "login": "1234567",
+                "perfil": "0d81666c-27c8-4e43-a41c-0c9d2764de91",
                 "iss": "aplicacao-dotnet",
                 "aud": "boletim-api",
                 "exp": datetime.now(UTC) + timedelta(minutes=5),
@@ -178,6 +191,96 @@ class TestBoletinsView(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        obter_abrangencia.assert_called_once_with(
+            "1234567", "0d81666c-27c8-4e43-a41c-0c9d2764de91"
+        )
+
+    @override_settings(
+        BEARER_TOKEN_SIGNING_KEY="segredo-de-integracao-com-32-chars",
+        BEARER_TOKEN_ISSUER="aplicacao-dotnet",
+        BEARER_TOKEN_AUDIENCE="boletim-api",
+        BEARER_TOKEN_ALGORITHMS=["HS256"],
+    )
+    @patch("apps.core.abrangencia.service.AbrangenciaClient.obter_vigente")
+    def test_rejeita_jwt_sem_abrangencia_na_ue(
+        self, obter_abrangencia
+    ) -> None:
+        """Retorna HTTP 403 quando a UE não pertence ao usuário."""
+        obter_abrangencia.return_value = Abrangencia(
+            tipo=TipoAbrangencia.UE,
+            dres=frozenset(),
+            ues=frozenset({"outra-ue"}),
+            turmas=frozenset(),
+        )
+        token = jwt.encode(
+            {
+                "login": "1234567",
+                "perfil": "0d81666c-27c8-4e43-a41c-0c9d2764de91",
+                "iss": "aplicacao-dotnet",
+                "aud": "boletim-api",
+                "exp": datetime.now(UTC) + timedelta(minutes=5),
+            },
+            "segredo-de-integracao-com-32-chars",
+            algorithm="HS256",
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        response = client.get(
+            _URL_COLETIVA,
+            {
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
+                "semestre": 1,
+                "modalidade": 5,
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(
+        BEARER_TOKEN_SIGNING_KEY="segredo-de-integracao-com-32-chars",
+        BEARER_TOKEN_ISSUER="aplicacao-dotnet",
+        BEARER_TOKEN_AUDIENCE="boletim-api",
+        BEARER_TOKEN_ALGORITHMS=["HS256"],
+    )
+    @patch("apps.core.permissions.AbrangenciaService.obter_vigente")
+    def test_retorna_indisponibilidade_como_string_json(
+        self, obter_abrangencia
+    ) -> None:
+        """Retorna HTTP 503 com a mensagem sem o envelope `detail`."""
+        obter_abrangencia.side_effect = ServicoAbrangenciaIndisponivel()
+        token = jwt.encode(
+            {
+                "login": "1234567",
+                "perfil": "0d81666c-27c8-4e43-a41c-0c9d2764de91",
+                "iss": "aplicacao-dotnet",
+                "aud": "boletim-api",
+                "exp": datetime.now(UTC) + timedelta(minutes=5),
+            },
+            "segredo-de-integracao-com-32-chars",
+            algorithm="HS256",
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        response = client.get(
+            _URL_COLETIVA,
+            {
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
+                "semestre": 1,
+                "modalidade": 5,
+            },
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json(),
+            "Serviço de abrangência temporariamente indisponível.",
+        )
 
     @patch("apps.boletim.api.views.BoletimService")
     def test_aceita_semestre_zero(self, service_class) -> None:

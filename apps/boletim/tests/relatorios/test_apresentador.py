@@ -197,7 +197,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             nomes_por_grupo,
             [
                 ["Matemática", "Português", "Arte"],
-                ["Ciências", "Arte"],
+                ["Ciências"],
             ],
         )
 
@@ -219,13 +219,16 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             nomes_por_grupo,
             [
                 ["Matemática", "Português", "Arte"],
-                ["Ciências", "Arte"],
+                ["Ciências"],
             ],
         )
 
-    def test_insere_regencia_em_todos_os_grupos_da_turma_anual(self) -> None:
-        """Turmas anuais repetem a regência ao final de cada grupo."""
+    def test_insere_regencia_apenas_no_grupo_da_turma_anual(self) -> None:
+        """Matriz com território mostra a regência somente em seu grupo."""
         boletim = self._boletim_com_regencia(modalidade_codigo=5)
+        componentes = boletim["componentes"]
+        self.assertIsInstance(componentes, list)
+        componentes[2]["territorio_saber"] = True
 
         contexto = montar_contexto_pdf([boletim], 1)
 
@@ -238,15 +241,12 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             nomes,
             [
                 ["Matemática", "Português", "Arte"],
-                ["Ciências", "Arte"],
+                ["Ciências"],
             ],
         )
         primeira_regencia = item["grupos"][0]["componentes"][2]
-        segunda_regencia = item["grupos"][1]["componentes"][1]
         self.assertTrue(primeira_regencia["primeira_linha_regencia"])
-        self.assertTrue(segunda_regencia["primeira_linha_regencia"])
         self.assertEqual(primeira_regencia["linhas_regencia"], 1)
-        self.assertEqual(segunda_regencia["linhas_regencia"], 1)
 
     def test_move_componente_normal_da_regencia_para_segundo_grupo(
         self,
@@ -257,6 +257,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         regencias = boletim["regencias"]
         self.assertIsInstance(componentes, list)
         self.assertIsInstance(regencias, list)
+        componentes[2]["territorio_saber"] = True
         componentes.append(
             {
                 "componente_codigo": 218,
@@ -280,7 +281,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             nomes,
             [
                 ["Matemática", "Português", "Libras"],
-                ["Ciências", "Libras"],
+                ["Ciências"],
             ],
         )
 
@@ -362,11 +363,27 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             ],
         )
         primeira_regencia = item["grupos"][0]["componentes"][3]
-        segunda_regencia = item["grupos"][1]["componentes"][2]
         self.assertTrue(primeira_regencia["primeira_linha_regencia"])
-        self.assertTrue(segunda_regencia["primeira_linha_regencia"])
         self.assertEqual(primeira_regencia["linhas_regencia"], 6)
-        self.assertEqual(segunda_regencia["linhas_regencia"], 6)
+
+    def test_trunca_nome_extenso_do_componente_com_reticencias(self) -> None:
+        """Limita o nome do componente aos 34 caracteres usados no legado."""
+        boletim = self._boletim(1)
+        componentes = boletim["componentes"]
+        self.assertIsInstance(componentes, list)
+        componentes[0]["disciplina_nome_sgp"] = (
+            "VI - CULTURA CORPORAL, APRENDIZAGEM EMOCIONAL PROMOÇÃO "
+            "DA SAÚDE - DIVERSIDADE CULTURAL"
+        )
+
+        contexto = montar_contexto_pdf([boletim], 1)
+
+        item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
+        componente = item["grupos"][0]["componentes"][0]
+        self.assertEqual(
+            componente["nome"],
+            "VI - CULTURA CORPORAL, APRENDIZAGE...",
+        )
 
     def test_insere_regencia_antes_dos_grupos_em_turma_semestral(self) -> None:
         """Turmas semestrais (EJA) mostram a regência antes dos grupos."""
@@ -520,6 +537,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
                     "disciplina_nome_sgp": "Ciências",
                     "ordem_grupo_area": 2,
                     "grupo_matriz_id": 20,
+                    "territorio_saber": True,
                     "bimestres": [{"bimestre": 1}],
                 },
             ],

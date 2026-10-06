@@ -21,6 +21,7 @@ from apps.boletim.serializers import (
     FiltrosBoletinsSerializer,
 )
 from apps.boletim.services import BoletimService
+from apps.core.permissions import RequerAbrangenciaParaJwt
 from apps.core.views import BaseAPIView
 
 _CABECALHO_MENSAGEM_SEM_ALUNOS = OpenApiParameter(
@@ -34,6 +35,13 @@ _CABECALHO_MENSAGEM_SEM_ALUNOS = OpenApiParameter(
 
 class BoletinsView(BaseAPIView):
     """Lista boletins consolidados de vários alunos."""
+
+    permission_classes = [RequerAbrangenciaParaJwt]
+    campos_abrangencia = {
+        "dre": "dre_codigo",
+        "ue": "ue_codigo",
+        "turma": "turma_codigo",
+    }
 
     @extend_schema(
         parameters=[FiltrosBoletinsSerializer],
@@ -77,6 +85,8 @@ class BoletinsView(BaseAPIView):
 class BoletinsPdfView(BaseAPIView):
     """Gera boletins escolares de vários alunos em PDF."""
 
+    permission_classes = [RequerAbrangenciaParaJwt]
+    campos_abrangencia = BoletinsView.campos_abrangencia
     renderer_classes = [JSONRenderer, PdfRenderer]
 
     @extend_schema(

@@ -137,6 +137,10 @@ def _formatar_boletim(
         regencias_brutas,
         periodos,
         semestral,
+        not any(
+            bool(componente.get("territorio_saber"))
+            for componente in componentes_brutos
+        ),
     )
 
     todos_bimestres = [
@@ -275,6 +279,7 @@ def _montar_grupos(
     regencias: list[Mapping[str, object]],
     periodos: tuple[int, ...],
     semestral: bool,
+    repetir_regencia_por_grupo: bool,
 ) -> list[dict[str, object]]:
     """Posiciona a regência no subgrupo usado pelo relatório detalhado.
 
@@ -287,6 +292,8 @@ def _montar_grupos(
         regencias: Regências consolidadas do boletim.
         periodos: Períodos exibidos no boletim.
         semestral: Indica se a modalidade da turma é semestral (EJA).
+        repetir_regencia_por_grupo: Indica se a matriz sem Território do
+            Saber deve repetir os componentes da regência em cada grupo.
 
     Returns:
         Grupos de matriz com as regências posicionadas corretamente.
@@ -316,10 +323,24 @@ def _montar_grupos(
         grupos_normais.append({"grupo_matriz_id": 0, "componentes": linhas})
         return grupos_normais
 
-    linhas = [linha for itens in linhas_por_matriz.values() for linha in itens]
+    if repetir_regencia_por_grupo:
+        linhas = [
+            linha for itens in linhas_por_matriz.values() for linha in itens
+        ]
+        for grupo in grupos_normais:
+            componentes = cast(list[dict[str, object]], grupo["componentes"])
+            componentes.extend(dict(linha) for linha in linhas)
+        return grupos_normais
+
     for grupo in grupos_normais:
+        chave = _inteiro(grupo.get("grupo_matriz_id"))
         componentes = cast(list[dict[str, object]], grupo["componentes"])
-        componentes.extend(linhas)
+        componentes.extend(linhas_por_matriz.pop(chave, []))
+
+    for chave, linhas in linhas_por_matriz.items():
+        grupos_normais.append(
+            {"grupo_matriz_id": chave, "componentes": linhas}
+        )
     return grupos_normais
 
 
@@ -541,9 +562,7 @@ def _formatar_componente(
     possui_periodo_ano_atual = _possui_periodo_ano_atual(por_numero.values())
     registra_frequencia = bool(componente.get("registra_frequencia", True))
     return {
-        "nome": componente.get("disciplina_nome_sgp")
-        or componente.get("disciplina_nome")
-        or "",
+        "nome": _formatar_nome_componente(componente),
         "periodos": [
             {
                 "nota": _formatar_nota(
@@ -562,6 +581,23 @@ def _formatar_componente(
             for periodo in periodos
         ],
     }
+
+
+def _formatar_nome_componente(componente: Mapping[str, object]) -> str:
+    """Limite o nome do componente como no boletim legado.
+
+    Args:
+        componente: Componente com o nome usado pelo SGP ou pela origem.
+
+    Returns:
+        Nome completo até 34 caracteres ou nome abreviado com reticências.
+    """
+    nome = str(
+        componente.get("disciplina_nome_sgp")
+        or componente.get("disciplina_nome")
+        or ""
+    )
+    return f"{nome[:34]}..." if len(nome) > 34 else nome
 
 
 def _periodos_por_numero(valor: object) -> dict[int, Mapping[str, object]]:
