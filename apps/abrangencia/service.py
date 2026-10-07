@@ -1,10 +1,10 @@
 """Regras compartilhadas de autorização por abrangência."""
 
-from apps.core.abrangencia.cache_repository import (
+from apps.abrangencia.cache_repository import (
     AbrangenciaCacheRepository,
 )
-from apps.core.abrangencia.client import AbrangenciaClient
-from apps.core.abrangencia.models import (
+from apps.abrangencia.client import AbrangenciaClient
+from apps.abrangencia.models import (
     Abrangencia,
     RecursoAbrangencia,
     TipoAbrangencia,

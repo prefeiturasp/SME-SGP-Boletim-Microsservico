@@ -10,8 +10,8 @@ from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
-from apps.core.abrangencia.models import RecursoAbrangencia
-from apps.core.abrangencia.service import AbrangenciaService
+from apps.abrangencia.models import RecursoAbrangencia
+from apps.abrangencia.service import AbrangenciaService
 from apps.core.authentication import (
     ApiKeyAuthentication,
     BearerTokenAuthentication,

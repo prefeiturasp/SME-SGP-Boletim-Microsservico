@@ -12,6 +12,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.status import HTTP_204_NO_CONTENT
 
+from apps.abrangencia.permissions import RequerAbrangenciaParaJwt
 from apps.boletim.api.renderers import PdfRenderer
 from apps.boletim.constantes import MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS
 from apps.boletim.relatorios.gerador_pdf import GeradorBoletinsPdf
@@ -21,7 +22,6 @@ from apps.boletim.serializers import (
     FiltrosBoletinsSerializer,
 )
 from apps.boletim.services import BoletimService
-from apps.core.permissions import RequerAbrangenciaParaJwt
 from apps.core.views import BaseAPIView
 
 _CABECALHO_MENSAGEM_SEM_ALUNOS = OpenApiParameter(

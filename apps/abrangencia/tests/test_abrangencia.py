@@ -4,19 +4,19 @@ from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase, override_settings
 
-from apps.core.abrangencia.cache_repository import (
+from apps.abrangencia.cache_repository import (
     AbrangenciaCacheRepository,
 )
-from apps.core.abrangencia.client import AbrangenciaClient
-from apps.core.abrangencia.exceptions import (
+from apps.abrangencia.client import AbrangenciaClient
+from apps.abrangencia.exceptions import (
     ServicoAbrangenciaIndisponivel,
 )
-from apps.core.abrangencia.models import (
+from apps.abrangencia.models import (
     Abrangencia,
     RecursoAbrangencia,
     TipoAbrangencia,
 )
-from apps.core.abrangencia.service import AbrangenciaService
+from apps.abrangencia.service import AbrangenciaService
 
 
 class TestAbrangenciaClient(SimpleTestCase):
@@ -55,7 +55,7 @@ class TestAbrangenciaClient(SimpleTestCase):
         PEDAGOGICO_API_KEY="chave-interna",
         PEDAGOGICO_API_KEY_HEADER="x-api-eol-key",
     )
-    @patch("apps.core.abrangencia.client.build_http_client")
+    @patch("apps.abrangencia.client.build_http_client")
     def test_consulta_com_cliente_http_do_sdk(self, construir_cliente) -> None:
         """Usa o cliente do SDK com contexto e configurações institucionais."""
         cliente = MagicMock()

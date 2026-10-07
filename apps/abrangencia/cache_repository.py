@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from django.conf import settings
 
-from apps.core.abrangencia.models import Abrangencia
+from apps.abrangencia.models import Abrangencia
 from apps.core.cache import CacheRepository
 
 

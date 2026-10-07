@@ -11,10 +11,10 @@ from django.conf import settings
 from pybreaker import CircuitBreakerError
 from sme_sidecar_sdk.http import build_http_client
 
-from apps.core.abrangencia.exceptions import (
+from apps.abrangencia.exceptions import (
     ServicoAbrangenciaIndisponivel,
 )
-from apps.core.abrangencia.models import Abrangencia, TipoAbrangencia
+from apps.abrangencia.models import Abrangencia, TipoAbrangencia
 
 
 class AbrangenciaClient:

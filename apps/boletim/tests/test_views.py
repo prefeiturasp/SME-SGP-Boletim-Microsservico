@@ -8,11 +8,11 @@ from django.conf import settings
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from apps.boletim.serializers import MODALIDADES_CHOICES
-from apps.core.abrangencia.exceptions import (
+from apps.abrangencia.exceptions import (
     ServicoAbrangenciaIndisponivel,
 )
-from apps.core.abrangencia.models import Abrangencia, TipoAbrangencia
+from apps.abrangencia.models import Abrangencia, TipoAbrangencia
+from apps.boletim.serializers import MODALIDADES_CHOICES
 
 _URL_COLETIVA = "/api/boletim/"
 _URL_PDF = "/api/boletim/pdf/"
@@ -151,7 +151,7 @@ class TestBoletinsView(TestCase):
         BEARER_TOKEN_AUDIENCE="boletim-api",
         BEARER_TOKEN_ALGORITHMS=["HS256"],
     )
-    @patch("apps.core.abrangencia.service.AbrangenciaClient.obter_vigente")
+    @patch("apps.abrangencia.service.AbrangenciaClient.obter_vigente")
     @patch("apps.boletim.api.views.BoletimService")
     def test_aceita_token_bearer_em_alternativa_a_api_key(
         self, service_class, obter_abrangencia
@@ -201,7 +201,7 @@ class TestBoletinsView(TestCase):
         BEARER_TOKEN_AUDIENCE="boletim-api",
         BEARER_TOKEN_ALGORITHMS=["HS256"],
     )
-    @patch("apps.core.abrangencia.service.AbrangenciaClient.obter_vigente")
+    @patch("apps.abrangencia.service.AbrangenciaClient.obter_vigente")
     def test_rejeita_jwt_sem_abrangencia_na_ue(
         self, obter_abrangencia
     ) -> None:
@@ -245,7 +245,7 @@ class TestBoletinsView(TestCase):
         BEARER_TOKEN_AUDIENCE="boletim-api",
         BEARER_TOKEN_ALGORITHMS=["HS256"],
     )
-    @patch("apps.core.abrangencia.service.AbrangenciaClient.obter_vigente")
+    @patch("apps.abrangencia.service.AbrangenciaClient.obter_vigente")
     @patch("apps.boletim.api.views.BoletimService")
     def test_rejeita_pdf_quando_uma_das_turmas_esta_fora_da_abrangencia(
         self, service_class, obter_abrangencia
@@ -290,7 +290,7 @@ class TestBoletinsView(TestCase):
         BEARER_TOKEN_AUDIENCE="boletim-api",
         BEARER_TOKEN_ALGORITHMS=["HS256"],
     )
-    @patch("apps.core.permissions.AbrangenciaService.obter_vigente")
+    @patch("apps.abrangencia.permissions.AbrangenciaService.obter_vigente")
     def test_retorna_indisponibilidade_como_string_json(
         self, obter_abrangencia
     ) -> None:
