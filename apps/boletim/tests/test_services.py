@@ -1,5 +1,6 @@
 """Testes dos serviços de boletim."""
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from django.test import SimpleTestCase
@@ -44,6 +45,22 @@ class TestBoletimService(SimpleTestCase):
             alunos_codigo=[123, 456],
             considera_inativo=False,
             turma_codigo=None,
+        )
+
+    def test_usa_atualizacao_mais_recente_dos_dados_academicos(self) -> None:
+        """Mantém o maior instante das notas e faltas exibidas."""
+        antigo = self._registro(modalidade=5, bimestre=1)
+        antigo.dados_atualizados_em = datetime(2026, 10, 7, 8, 30, tzinfo=UTC)
+        recente = self._registro(modalidade=5, bimestre=2)
+        recente.dados_atualizados_em = datetime(2026, 10, 7, 9, 45, tzinfo=UTC)
+        repository = MagicMock()
+        repository.listar_boletins.return_value = [antigo, recente]
+
+        resultado = self._listar_primeiro(repository)
+
+        self.assertEqual(
+            resultado["dados_atualizados_em"],
+            recente.dados_atualizados_em,
         )
 
     def test_retorna_boletins_do_cache_sem_consultar_repository(self) -> None:

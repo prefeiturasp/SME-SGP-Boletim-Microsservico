@@ -1,6 +1,6 @@
 """Testes do apresentador do relatório de boletins."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest.mock import patch
 
 from django.test import SimpleTestCase
@@ -10,6 +10,48 @@ from apps.boletim.relatorios.apresentador import montar_contexto_pdf
 
 class TestApresentadorBoletinsPdf(SimpleTestCase):
     """Valida a preparação dos dados exibidos no PDF."""
+
+    @patch(
+        "apps.boletim.relatorios.apresentador.timezone.localtime",
+        return_value=datetime(2026, 10, 7, 14, 35),
+    )
+    def test_exibe_data_e_hora_da_impressao_no_rodape(
+        self,
+        _: object,
+    ) -> None:
+        """Formata data e hora de impressão exibidas no rodapé."""
+        contexto = montar_contexto_pdf([], 2)
+
+        self.assertEqual(contexto["data_impressao"], "07/10/2026 14:35")
+
+    @patch(
+        "apps.boletim.relatorios.apresentador.timezone.now",
+        return_value=datetime(2026, 10, 7, 17, 35, tzinfo=UTC),
+    )
+    def test_exibe_atualizacao_mais_recente_dos_dados_no_rodape(
+        self,
+        _: object,
+    ) -> None:
+        """Exibe a consolidação mais recente entre os boletins do PDF."""
+        primeiro = self._boletim(1)
+        primeiro["dados_atualizados_em"] = datetime(
+            2026, 10, 7, 8, 20, tzinfo=UTC
+        )
+        segundo = self._boletim(2)
+        segundo["dados_atualizados_em"] = "2026-10-07T09:45:00+00:00"
+
+        contexto = montar_contexto_pdf([primeiro, segundo], 2)
+
+        self.assertEqual(
+            contexto["dados_atualizados_em"],
+            "07/10/2026 06:45",
+        )
+
+    def test_informa_ausencia_da_atualizacao_dos_dados(self) -> None:
+        """Representa como nula a atualização ausente no boletim."""
+        contexto = montar_contexto_pdf([self._boletim(1)], 1)
+
+        self.assertIsNone(contexto["dados_atualizados_em"])
 
     def test_distribui_quantidades_suportadas_por_pagina(self) -> None:
         """Empilha boletins em largura cheia, N por página."""

@@ -245,6 +245,51 @@ class TestBoletinsView(TestCase):
         BEARER_TOKEN_AUDIENCE="boletim-api",
         BEARER_TOKEN_ALGORITHMS=["HS256"],
     )
+    @patch("apps.core.abrangencia.service.AbrangenciaClient.obter_vigente")
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_rejeita_pdf_quando_uma_das_turmas_esta_fora_da_abrangencia(
+        self, service_class, obter_abrangencia
+    ) -> None:
+        """Rejeita o PDF se uma turma repetida não for permitida."""
+        obter_abrangencia.return_value = Abrangencia(
+            tipo=TipoAbrangencia.PROFESSOR,
+            dres=frozenset(),
+            ues=frozenset(),
+            turmas=frozenset({"3026635"}),
+        )
+        token = jwt.encode(
+            {
+                "login": "1234567",
+                "perfil": "0d81666c-27c8-4e43-a41c-0c9d2764de91",
+                "iss": "aplicacao-dotnet",
+                "aud": "boletim-api",
+                "exp": datetime.now(UTC) + timedelta(minutes=5),
+            },
+            "segredo-de-integracao-com-32-chars",
+            algorithm="HS256",
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        response = client.get(
+            _URL_PDF + "?ano_letivo=2026&dre_codigo=108100&ue_codigo=019715"
+            "&semestre=0&modalidade=5&boletins_por_pagina=2"
+            "&turma_codigo=2853538&turma_codigo=3026635"
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.json(),
+            "A turma 2853538 não está na abrangência do usuário.",
+        )
+        service_class.assert_not_called()
+
+    @override_settings(
+        BEARER_TOKEN_SIGNING_KEY="segredo-de-integracao-com-32-chars",
+        BEARER_TOKEN_ISSUER="aplicacao-dotnet",
+        BEARER_TOKEN_AUDIENCE="boletim-api",
+        BEARER_TOKEN_ALGORITHMS=["HS256"],
+    )
     @patch("apps.core.permissions.AbrangenciaService.obter_vigente")
     def test_retorna_indisponibilidade_como_string_json(
         self, obter_abrangencia

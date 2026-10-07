@@ -54,13 +54,19 @@ class RequerAbrangenciaParaJwt(BasePermission):
 
         claims = cast(_UsuarioComClaims, request.user).claims
         login, perfil = self._obter_identidade(claims)
-        recurso = self._obter_recurso(request, view)
+        recursos = self._obter_recursos(request, view)
         service = AbrangenciaService()
         abrangencia = service.obter_vigente(login, perfil)
-        if not service.pode_acessar(abrangencia, recurso):
-            raise PermissionDenied(
-                "Usuário sem abrangência para o recurso solicitado."
-            )
+        for recurso in recursos:
+            if not service.pode_acessar(abrangencia, recurso):
+                if recurso.turma_codigo is not None:
+                    raise PermissionDenied(
+                        f"A turma {recurso.turma_codigo} não está na "
+                        "abrangência do usuário."
+                    )
+                raise PermissionDenied(
+                    "Usuário sem abrangência para o recurso solicitado."
+                )
         return True
 
     @staticmethod
@@ -92,19 +98,33 @@ class RequerAbrangenciaParaJwt(BasePermission):
         return login, perfil_normalizado
 
     @staticmethod
-    def _obter_recurso(request: Request, view: APIView) -> RecursoAbrangencia:
-        """Mapeia os parâmetros declarados pela view para o recurso.
+    def _obter_recursos(
+        request: Request,
+        view: APIView,
+    ) -> list[RecursoAbrangencia]:
+        """Mapeia os parâmetros declarados pela view para os recursos.
 
         Args:
             request: Requisição que contém os códigos institucionais.
             view: View com o mapa `campos_abrangencia` configurado.
 
         Returns:
-            Recurso formado pelos códigos de DRE, UE e turma informados.
+            Recursos formados pelos códigos de DRE, UE e todas as turmas
+            informadas, inclusive quando o parâmetro se repete.
         """
         configuracao = cast(_ViewComAbrangencia, view).campos_abrangencia
-        return RecursoAbrangencia(
-            dre_codigo=request.query_params.get(configuracao["dre"]),
-            ue_codigo=request.query_params.get(configuracao["ue"]),
-            turma_codigo=request.query_params.get(configuracao["turma"]),
-        )
+        dre_codigo = request.query_params.get(configuracao["dre"])
+        ue_codigo = request.query_params.get(configuracao["ue"])
+        turmas: list[str | None] = [
+            *request.query_params.getlist(configuracao["turma"])
+        ]
+        if not turmas:
+            turmas.append(None)
+        return [
+            RecursoAbrangencia(
+                dre_codigo=dre_codigo,
+                ue_codigo=ue_codigo,
+                turma_codigo=turma_codigo,
+            )
+            for turma_codigo in turmas
+        ]

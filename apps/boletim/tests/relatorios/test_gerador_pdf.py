@@ -134,6 +134,8 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
                 }
             ],
             "boletins_por_pagina": 2,
+            "dados_atualizados_em": "07/10/2026 09:45",
+            "data_impressao": "07/10/2026 14:35",
         }
 
         html = render_to_string("boletim/relatorios/boletins.html", contexto)
@@ -159,6 +161,8 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
         self.assertNotIn(' width="', html)
         self.assertNotIn("overflow: hidden", html)
         self.assertIn("<td>Teste</td>", html)
+        self.assertIn("Dados atualizados em 07/10/2026 09:45", html)
+        self.assertIn("Gerado em 07/10/2026 14:35", html)
         self.assertNotIn('<td width="10%"></td>', html)
 
 

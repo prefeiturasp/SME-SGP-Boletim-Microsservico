@@ -28,3 +28,9 @@ class TestBoletimModel(SimpleTestCase):
         campo = Boletim._meta.get_field("numero_chamada")
 
         self.assertTrue(campo.null)
+
+    def test_mapeia_atualizacao_dos_dados_academicos(self) -> None:
+        """Disponibiliza o instante de consolidação de notas e faltas."""
+        campo = Boletim._meta.get_field("dados_atualizados_em")
+
+        self.assertTrue(campo.null)

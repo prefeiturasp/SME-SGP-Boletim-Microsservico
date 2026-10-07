@@ -48,6 +48,7 @@ class ContextoBoletinsPdf(TypedDict):
 
     paginas: list[PaginaBoletinsPdf]
     boletins_por_pagina: int
+    dados_atualizados_em: str | None
     data_impressao: str
     total_paginas: int
 
@@ -82,9 +83,40 @@ def montar_contexto_pdf(
     return {
         "paginas": paginas,
         "boletins_por_pagina": boletins_por_pagina,
-        "data_impressao": timezone.localdate().strftime("%d/%m/%Y"),
+        "dados_atualizados_em": _formatar_atualizacao_dados(boletins),
+        "data_impressao": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
         "total_paginas": len(paginas),
     }
+
+
+def _formatar_atualizacao_dados(
+    boletins: Iterable[Mapping[str, object]],
+) -> str | None:
+    """Formata a atualização mais recente dos dados usados no PDF."""
+    atualizacoes = [
+        atualizacao
+        for boletim in boletins
+        if (atualizacao := _data_hora(boletim.get("dados_atualizados_em")))
+        is not None
+    ]
+    if not atualizacoes:
+        return None
+    mais_recente = max(atualizacoes)
+    if timezone.is_naive(mais_recente):
+        mais_recente = timezone.make_aware(mais_recente)
+    return timezone.localtime(mais_recente).strftime("%d/%m/%Y %H:%M")
+
+
+def _data_hora(valor: object) -> datetime | None:
+    """Normaliza um instante vindo do ORM ou do cache."""
+    if isinstance(valor, datetime):
+        return valor
+    if isinstance(valor, str):
+        try:
+            return datetime.fromisoformat(valor)
+        except ValueError:
+            return None
+    return None
 
 
 def _formatar_boletim(

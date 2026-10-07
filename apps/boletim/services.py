@@ -1,5 +1,7 @@
 """Casos de uso do domínio de boletim."""
 
+from datetime import datetime
+
 from apps.boletim.cache_repository import BoletimCacheRepository
 from apps.boletim.constantes import (
     BIMESTRES_ANUAIS,
@@ -341,6 +343,10 @@ class BoletimService:
 
         return {
             "dados_aluno": dados_aluno,
+            "dados_atualizados_em": BoletimService._obter_atualizacao_dados(
+                modelo_aluno,
+                registros,
+            ),
             "componentes": sorted(
                 componentes_por_chave.values(),
                 key=BoletimService._chave_ordenacao_componente,
@@ -349,6 +355,30 @@ class BoletimService:
                 regencias_por_codigo
             ),
         }
+
+    @staticmethod
+    def _obter_atualizacao_dados(
+        modelo_aluno: Boletim,
+        registros: list[Boletim],
+    ) -> datetime | None:
+        """Obtém a atualização mais recente dos dados acadêmicos exibidos.
+
+        Args:
+            modelo_aluno: Registro usado como fonte da identificação.
+            registros: Linhas acadêmicas usadas para montar o boletim.
+
+        Returns:
+            Maior instante de atualização ou o valor da linha-base quando não
+            houver componente exibido.
+        """
+        atualizacoes = [
+            registro.dados_atualizados_em
+            for registro in registros
+            if registro.dados_atualizados_em is not None
+        ]
+        if atualizacoes:
+            return max(atualizacoes)
+        return modelo_aluno.dados_atualizados_em
 
     @staticmethod
     def _indexar_registros_por_componente(
