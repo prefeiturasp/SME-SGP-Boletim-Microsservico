@@ -1,5 +1,8 @@
 """Casos de uso do domínio de boletim."""
 
+from datetime import datetime
+
+from apps.boletim.cache_repository import BoletimCacheRepository
 from apps.boletim.constantes import (
     BIMESTRES_ANUAIS,
     BIMESTRES_SEMESTRAIS,
@@ -38,13 +41,19 @@ _CAMPOS_SEM_DADOS = (
 class BoletimService:
     """Orquestra consultas ao boletim consolidado."""
 
-    def __init__(self, repository: BoletimRepository | None = None) -> None:
+    def __init__(
+        self,
+        repository: BoletimRepository | None = None,
+        cache_repository: BoletimCacheRepository | None = None,
+    ) -> None:
         """Inicializa o serviço com seu repositório.
 
         Args:
             repository: Repositório opcional para consulta dos dados.
+            cache_repository: Repositório opcional do cache compartilhado.
         """
         self._repository = repository or BoletimRepository()
+        self._cache_repository = cache_repository or BoletimCacheRepository()
 
     def listar_boletins(
         self,
@@ -74,6 +83,97 @@ class BoletimService:
         Returns:
             Boletins agrupados por aluno e turma.
         """
+        chave_cache = self._cache_repository.gerar_chave(
+            ano_letivo=ano_letivo,
+            dre_codigo=dre_codigo,
+            ue_codigo=ue_codigo,
+            semestre=semestre,
+            modalidade=modalidade,
+            alunos_codigo=alunos_codigo,
+            considera_inativo=considera_inativo,
+            turma_codigo=turma_codigo,
+            bimestre=bimestre,
+        )
+        boletins_cache = self._cache_repository.obter(chave_cache)
+        if boletins_cache is not None:
+            return boletins_cache
+
+        with self._cache_repository.bloquear(chave_cache) as adquirido:
+            if adquirido:
+                boletins_cache = self._cache_repository.obter(chave_cache)
+                if boletins_cache is not None:
+                    return boletins_cache
+
+                boletins = self._consultar_e_armazenar(
+                    chave_cache=chave_cache,
+                    ano_letivo=ano_letivo,
+                    dre_codigo=dre_codigo,
+                    ue_codigo=ue_codigo,
+                    semestre=semestre,
+                    modalidade=modalidade,
+                    alunos_codigo=alunos_codigo,
+                    considera_inativo=considera_inativo,
+                    turma_codigo=turma_codigo,
+                    bimestre=bimestre,
+                )
+                return boletins
+
+        boletins_cache = self._cache_repository.obter(chave_cache)
+        if boletins_cache is not None:
+            return boletins_cache
+        return self._consultar_boletins(
+            ano_letivo=ano_letivo,
+            dre_codigo=dre_codigo,
+            ue_codigo=ue_codigo,
+            semestre=semestre,
+            modalidade=modalidade,
+            alunos_codigo=alunos_codigo,
+            considera_inativo=considera_inativo,
+            turma_codigo=turma_codigo,
+            bimestre=bimestre,
+        )
+
+    def _consultar_e_armazenar(
+        self,
+        chave_cache: str,
+        ano_letivo: int,
+        dre_codigo: str,
+        ue_codigo: str,
+        semestre: int,
+        modalidade: int,
+        alunos_codigo: list[int],
+        considera_inativo: bool,
+        turma_codigo: str | None,
+        bimestre: int | None,
+    ) -> list[dict[str, object]]:
+        """Consulta a origem e armazena o resultado no cache."""
+        boletins = self._consultar_boletins(
+            ano_letivo=ano_letivo,
+            dre_codigo=dre_codigo,
+            ue_codigo=ue_codigo,
+            semestre=semestre,
+            modalidade=modalidade,
+            alunos_codigo=alunos_codigo,
+            considera_inativo=considera_inativo,
+            turma_codigo=turma_codigo,
+            bimestre=bimestre,
+        )
+        self._cache_repository.armazenar(chave_cache, boletins)
+        return boletins
+
+    def _consultar_boletins(
+        self,
+        ano_letivo: int,
+        dre_codigo: str,
+        ue_codigo: str,
+        semestre: int,
+        modalidade: int,
+        alunos_codigo: list[int],
+        considera_inativo: bool,
+        turma_codigo: str | None,
+        bimestre: int | None,
+    ) -> list[dict[str, object]]:
+        """Consulta e monta os boletins quando não há valor em cache."""
         registros = self._repository.listar_boletins(
             ano_letivo=ano_letivo,
             dre_codigo=dre_codigo,
@@ -243,6 +343,10 @@ class BoletimService:
 
         return {
             "dados_aluno": dados_aluno,
+            "dados_atualizados_em": BoletimService._obter_atualizacao_dados(
+                modelo_aluno,
+                registros,
+            ),
             "componentes": sorted(
                 componentes_por_chave.values(),
                 key=BoletimService._chave_ordenacao_componente,
@@ -251,6 +355,30 @@ class BoletimService:
                 regencias_por_codigo
             ),
         }
+
+    @staticmethod
+    def _obter_atualizacao_dados(
+        modelo_aluno: Boletim,
+        registros: list[Boletim],
+    ) -> datetime | None:
+        """Obtém a atualização mais recente dos dados acadêmicos exibidos.
+
+        Args:
+            modelo_aluno: Registro usado como fonte da identificação.
+            registros: Linhas acadêmicas usadas para montar o boletim.
+
+        Returns:
+            Maior instante de atualização ou o valor da linha-base quando não
+            houver componente exibido.
+        """
+        atualizacoes = [
+            registro.dados_atualizados_em
+            for registro in registros
+            if registro.dados_atualizados_em is not None
+        ]
+        if atualizacoes:
+            return max(atualizacoes)
+        return modelo_aluno.dados_atualizados_em
 
     @staticmethod
     def _indexar_registros_por_componente(

@@ -69,6 +69,7 @@ _CAMPOS_BOLETIM = (
     "tipo_nota",
     "tipo_nota_descricao",
     "origem_frequencia",
+    "dados_atualizados_em",
     "parecer_conclusivo",
     "recomendacoes_aluno",
     "recomendacoes_familia",

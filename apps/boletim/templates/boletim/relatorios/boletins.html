@@ -20,7 +20,7 @@
             size: A4 portrait;
             margin: 5mm;
             @bottom-left {
-                content: "SGP - Sistema de Gestão Pedagógica | {{ data_impressao }}";
+                content: "SGP - Sistema de Gestão Pedagógica | Dados atualizados em {{ dados_atualizados_em|default:'não informado' }} | Gerado em {{ data_impressao }}";
                 font-family: "DejaVu Sans", sans-serif;
                 font-size: 7.2px;
             }

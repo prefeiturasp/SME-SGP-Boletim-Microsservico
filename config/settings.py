@@ -45,12 +45,11 @@ def _parse_db_url(url: Any) -> dict[str, Any]:
 
 
 INSTALLED_APPS = [
-    "django.contrib.contenttypes",
-    "django.contrib.auth",
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
     "apps.core.apps.CoreConfig",
+    "apps.abrangencia.apps.AbrangenciaConfig",
     "apps.boletim.apps.BoletimConfig",
 ]
 
@@ -76,25 +75,69 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {"default": _parse_db_url(os.environ.get("URL_BANCO_BOLETIM", ""))}
-if "test" in sys.argv or os.environ.get(
+_EM_TESTE = "test" in sys.argv or os.environ.get(
     "USE_SQLITE_TEST", "False"
-).lower() in ("true", "1"):
+).lower() in ("true", "1")
+if _EM_TESTE:
     DATABASES["default"] = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
     }
 
+KEYDB_URL = os.environ.get("KEYDB_URL", "")
+KEYDB_ENABLED = bool(KEYDB_URL and not _EM_TESTE)
+CACHE_BOLETIM_TTL = int(os.environ.get("CACHE_BOLETIM_TTL", "1800"))
+CACHE_ABRANGENCIA_TTL = int(os.environ.get("CACHE_ABRANGENCIA_TTL", "300"))
+CACHE_LOCK_TTL = int(os.environ.get("CACHE_LOCK_TTL", "30"))
+CACHE_LOCK_WAIT_TIMEOUT = float(os.environ.get("CACHE_LOCK_WAIT_TIMEOUT", "2"))
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    },
+    "keydb": (
+        {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": KEYDB_URL,
+            "KEY_FUNCTION": "apps.core.cache.preservar_chave_cache",
+        }
+        if KEYDB_ENABLED
+        else {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
+    ),
+}
+
 API_KEY_HEADER = os.environ.get("API_KEY_HEADER", "x-api-key")
 API_KEY = os.environ.get("API_KEY", "dev-key-default")
+PEDAGOGICO_API_URL = os.environ.get("PEDAGOGICO_API_URL", "").rstrip("/")
+PEDAGOGICO_API_KEY = os.environ.get("PEDAGOGICO_API_KEY", "")
+PEDAGOGICO_API_KEY_HEADER = os.environ.get(
+    "PEDAGOGICO_API_KEY_HEADER", "x-api-eol-key"
+)
+BEARER_TOKEN_SIGNING_KEY = os.environ.get(
+    "BEARER_TOKEN_SIGNING_KEY", ""
+).replace("\\n", "\n")
+BEARER_TOKEN_ISSUER = os.environ.get("BEARER_TOKEN_ISSUER", "")
+BEARER_TOKEN_AUDIENCE = os.environ.get("BEARER_TOKEN_AUDIENCE", "")
+BEARER_TOKEN_ALGORITHMS = [
+    algorithm.strip()
+    for algorithm in os.environ.get("BEARER_TOKEN_ALGORITHMS", "HS256").split(
+        ","
+    )
+    if algorithm.strip()
+]
 
 REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "apps.core.exceptions.exception_handler",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "apps.core.authentication.ApiKeyAuthentication",
+        "apps.core.authentication.BearerTokenAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "UNAUTHENTICATED_USER": None,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -102,16 +145,6 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Microsserviço de boletim do SGP",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
-    "APPEND_COMPONENTS": {
-        "securitySchemes": {
-            "ApiKey": {
-                "type": "apiKey",
-                "name": API_KEY_HEADER,
-                "in": "header",
-            }
-        }
-    },
-    "SECURITY": [{"ApiKey": []}],
 }
 
 TEST_RUNNER = "config.test_runner.BoletimTestRunner"

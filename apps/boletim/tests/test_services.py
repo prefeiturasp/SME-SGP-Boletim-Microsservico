@@ -1,5 +1,6 @@
 """Testes dos serviços de boletim."""
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from django.test import SimpleTestCase
@@ -45,6 +46,92 @@ class TestBoletimService(SimpleTestCase):
             considera_inativo=False,
             turma_codigo=None,
         )
+
+    def test_usa_atualizacao_mais_recente_dos_dados_academicos(self) -> None:
+        """Mantém o maior instante das notas e faltas exibidas."""
+        antigo = self._registro(modalidade=5, bimestre=1)
+        antigo.dados_atualizados_em = datetime(2026, 10, 7, 8, 30, tzinfo=UTC)
+        recente = self._registro(modalidade=5, bimestre=2)
+        recente.dados_atualizados_em = datetime(2026, 10, 7, 9, 45, tzinfo=UTC)
+        repository = MagicMock()
+        repository.listar_boletins.return_value = [antigo, recente]
+
+        resultado = self._listar_primeiro(repository)
+
+        self.assertEqual(
+            resultado["dados_atualizados_em"],
+            recente.dados_atualizados_em,
+        )
+
+    def test_retorna_boletins_do_cache_sem_consultar_repository(self) -> None:
+        """Reutiliza o resultado consolidado encontrado no cache."""
+        repository = MagicMock()
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave.return_value = "chave"
+        cache_repository.obter.return_value = [{"cache": True}]
+
+        resultado = BoletimService(
+            repository,
+            cache_repository,
+        ).listar_boletins(
+            ano_letivo=2026,
+            dre_codigo="1",
+            ue_codigo="2",
+            semestre=1,
+            modalidade=5,
+            alunos_codigo=[456, 123],
+        )
+
+        self.assertEqual(resultado, [{"cache": True}])
+        repository.listar_boletins.assert_not_called()
+        cache_repository.armazenar.assert_not_called()
+
+    def test_armazena_resultado_quando_cache_nao_existe(self) -> None:
+        """Consulta a origem e armazena inclusive resultados vazios."""
+        repository = MagicMock()
+        repository.listar_boletins.return_value = []
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave.return_value = "chave"
+        cache_repository.obter.return_value = None
+
+        resultado = BoletimService(
+            repository,
+            cache_repository,
+        ).listar_boletins(
+            ano_letivo=2026,
+            dre_codigo="1",
+            ue_codigo="2",
+            semestre=1,
+            modalidade=5,
+            alunos_codigo=[],
+        )
+
+        self.assertEqual(resultado, [])
+        cache_repository.armazenar.assert_called_once_with("chave", [])
+
+    def test_rele_cache_apos_aguardar_lock_ocupado(self) -> None:
+        """Reutiliza o resultado produzido pela requisição concorrente."""
+        repository = MagicMock()
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave.return_value = "chave"
+        cache_repository.obter.side_effect = [None, [{"cache": True}]]
+        contexto_lock = cache_repository.bloquear.return_value
+        contexto_lock.__enter__.return_value = False
+
+        resultado = BoletimService(
+            repository,
+            cache_repository,
+        ).listar_boletins(
+            ano_letivo=2026,
+            dre_codigo="1",
+            ue_codigo="2",
+            semestre=1,
+            modalidade=5,
+            alunos_codigo=[123],
+        )
+
+        self.assertEqual(resultado, [{"cache": True}])
+        repository.listar_boletins.assert_not_called()
 
     def test_lista_boletins_retorna_vazio_sem_registros(self) -> None:
         """Retorna uma lista vazia quando não existem alunos no contexto."""

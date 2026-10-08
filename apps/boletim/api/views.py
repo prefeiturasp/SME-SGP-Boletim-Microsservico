@@ -12,6 +12,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.status import HTTP_204_NO_CONTENT
 
+from apps.abrangencia.permissions import RequerAbrangenciaParaJwt
 from apps.boletim.api.renderers import PdfRenderer
 from apps.boletim.constantes import MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS
 from apps.boletim.relatorios.gerador_pdf import GeradorBoletinsPdf
@@ -34,6 +35,13 @@ _CABECALHO_MENSAGEM_SEM_ALUNOS = OpenApiParameter(
 
 class BoletinsView(BaseAPIView):
     """Lista boletins consolidados de vários alunos."""
+
+    permission_classes = [RequerAbrangenciaParaJwt]
+    campos_abrangencia = {
+        "dre": "dre_codigo",
+        "ue": "ue_codigo",
+        "turma": "turma_codigo",
+    }
 
     @extend_schema(
         parameters=[FiltrosBoletinsSerializer],
@@ -77,6 +85,8 @@ class BoletinsView(BaseAPIView):
 class BoletinsPdfView(BaseAPIView):
     """Gera boletins escolares de vários alunos em PDF."""
 
+    permission_classes = [RequerAbrangenciaParaJwt]
+    campos_abrangencia = BoletinsView.campos_abrangencia
     renderer_classes = [JSONRenderer, PdfRenderer]
 
     @extend_schema(

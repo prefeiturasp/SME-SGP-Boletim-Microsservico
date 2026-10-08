@@ -78,6 +78,7 @@ class Boletim(ModeloBase):
     tipo_nota = models.TextField(null=True)
     tipo_nota_descricao = models.TextField(null=True)
     origem_frequencia = models.TextField(null=True)
+    dados_atualizados_em = models.DateTimeField(null=True)
     parecer_conclusivo = models.TextField(null=True)
     recomendacoes_aluno = models.TextField(null=True)
     recomendacoes_familia = models.TextField(null=True)
