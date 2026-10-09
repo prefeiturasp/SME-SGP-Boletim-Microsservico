@@ -1,0 +1,31 @@
+services:
+  boletim:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: sme_sgp_boletim_ms_dev
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      KEYDB_URL: ${KEYDB_URL:-redis://keydb:6379/0}
+      CACHE_BOLETIM_TTL: ${CACHE_BOLETIM_TTL:-1800}
+      CACHE_LOCK_TTL: ${CACHE_LOCK_TTL:-30}
+      CACHE_LOCK_WAIT_TIMEOUT: ${CACHE_LOCK_WAIT_TIMEOUT:-2}
+    volumes:
+      - .:/app
+    command: >
+      sh -c "python -Xfrozen_modules=off manage.py runserver 0.0.0.0:${PORT_WEB:-8001}"
+    ports:
+      - "${PORT_WEB:-8001}:${PORT_WEB:-8001}"
+      - "${PORT_DEBUGPY:-5678}:${PORT_DEBUGPY:-5678}"
+    depends_on:
+      - keydb
+    restart: unless-stopped
+
+  keydb:
+    image: eqalpha/keydb:alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

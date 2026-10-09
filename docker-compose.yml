@@ -1,0 +1,23 @@
+services:
+  boletim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sme_sgp_boletim_ms
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      KEYDB_URL: ${KEYDB_URL:-redis://keydb:6379/0}
+      CACHE_BOLETIM_TTL: ${CACHE_BOLETIM_TTL:-1800}
+      CACHE_LOCK_TTL: ${CACHE_LOCK_TTL:-30}
+      CACHE_LOCK_WAIT_TIMEOUT: ${CACHE_LOCK_WAIT_TIMEOUT:-2}
+    ports:
+      - "8001:8000"
+    depends_on:
+      - keydb
+    restart: unless-stopped
+
+  keydb:
+    image: eqalpha/keydb:alpine
+    restart: unless-stopped
