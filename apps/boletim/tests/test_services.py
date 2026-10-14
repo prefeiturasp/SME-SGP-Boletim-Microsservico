@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 from django.test import SimpleTestCase
 
+from apps.boletim.constantes import CODIGO_SITUACAO_ALUNO_ATIVO
 from apps.boletim.models import Boletim
 from apps.boletim.serializers import BoletimAlunoResponseSerializer
 from apps.boletim.services import BoletimService
@@ -12,6 +13,73 @@ from apps.boletim.services import BoletimService
 
 class TestBoletimService(SimpleTestCase):
     """Valida a orquestração das consultas de boletim."""
+
+    def test_obtem_ultima_atualizacao_sem_filtros(self) -> None:
+        """Consulta a atualização global quando nenhum filtro é informado."""
+        repository = MagicMock()
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave_ultima_atualizacao.return_value = "chave"
+        cache_repository.obter_ultima_atualizacao.return_value = (False, None)
+        cache_repository.bloquear.return_value.__enter__.return_value = True
+        esperado = datetime(2026, 10, 13, 12, 30, tzinfo=UTC)
+        repository.obter_ultima_atualizacao.return_value = esperado
+
+        resultado = BoletimService(
+            repository,
+            cache_repository,
+        ).obter_ultima_atualizacao({})
+
+        repository.obter_ultima_atualizacao.assert_called_once_with({})
+        cache_repository.armazenar_ultima_atualizacao.assert_called_once_with(
+            "chave",
+            esperado,
+        )
+        self.assertEqual(resultado, esperado)
+
+    def test_retorna_ultima_atualizacao_do_cache(self) -> None:
+        """Evita consultar o banco quando a atualização está no cache."""
+        repository = MagicMock()
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave_ultima_atualizacao.return_value = "chave"
+        esperado = datetime(2026, 10, 13, 12, 30, tzinfo=UTC)
+        cache_repository.obter_ultima_atualizacao.return_value = (
+            True,
+            esperado,
+        )
+
+        resultado = BoletimService(
+            repository,
+            cache_repository,
+        ).obter_ultima_atualizacao({"ano_letivo": 2026})
+
+        self.assertEqual(resultado, esperado)
+        repository.obter_ultima_atualizacao.assert_not_called()
+
+    def test_mapeia_filtros_da_ultima_atualizacao(self) -> None:
+        """Mapeia os filtros HTTP e restringe matrículas quando solicitado."""
+        repository = MagicMock()
+        cache_repository = MagicMock()
+        cache_repository.gerar_chave_ultima_atualizacao.return_value = "chave"
+        cache_repository.obter_ultima_atualizacao.return_value = (False, None)
+        cache_repository.bloquear.return_value.__enter__.return_value = False
+
+        BoletimService(repository, cache_repository).obter_ultima_atualizacao(
+            {
+                "modalidade": 5,
+                "alunos_codigo": [123, 456],
+                "considera_inativo": False,
+                "bimestre": 2,
+            }
+        )
+
+        repository.obter_ultima_atualizacao.assert_called_once_with(
+            {
+                "modalidade_codigo": 5,
+                "aluno_codigo__in": [123, 456],
+                "bimestre": 2,
+                "codigo_situacao_matricula__in": (CODIGO_SITUACAO_ALUNO_ATIVO),
+            }
+        )
 
     def test_lista_boletins_agrupados_por_aluno(self) -> None:
         """Monta um boletim independente para cada aluno selecionado."""

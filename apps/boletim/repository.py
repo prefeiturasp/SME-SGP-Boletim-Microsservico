@@ -1,6 +1,9 @@
 """Consultas ORM do domínio de boletim."""
 
-from django.db.models import QuerySet
+from datetime import datetime
+from typing import cast
+
+from django.db.models import Max, QuerySet
 
 from apps.boletim.constantes import CODIGO_SITUACAO_ALUNO_ATIVO
 from apps.boletim.models import Boletim
@@ -130,3 +133,20 @@ class BoletimRepository:
             "disciplina_nome_sgp",
             "componente_codigo",
         )
+
+    def obter_ultima_atualizacao(
+        self,
+        filtros: dict[str, object],
+    ) -> datetime | None:
+        """Obtém a atualização mais recente para os filtros informados.
+
+        Args:
+            filtros: Filtros opcionais já mapeados para campos do model.
+
+        Returns:
+            Maior instante de atualização ou `None` quando não houver dados.
+        """
+        resultado = Boletim.objects.filter(**filtros).aggregate(
+            ultima_atualizacao=Max("dados_atualizados_em")
+        )
+        return cast(datetime | None, resultado["ultima_atualizacao"])
