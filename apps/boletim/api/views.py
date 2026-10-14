@@ -20,6 +20,8 @@ from apps.boletim.serializers import (
     BoletimAlunoResponseSerializer,
     FiltrosBoletinsPdfSerializer,
     FiltrosBoletinsSerializer,
+    FiltrosUltimaAtualizacaoSerializer,
+    UltimaAtualizacaoResponseSerializer,
 )
 from apps.boletim.services import BoletimService
 from apps.core.views import BaseAPIView
@@ -80,6 +82,36 @@ class BoletinsView(BaseAPIView):
                 headers={"X-Mensagem": MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS},
             )
         return Response(BoletimAlunoResponseSerializer(dados, many=True).data)
+
+
+class UltimaAtualizacaoBoletimView(BaseAPIView):
+    """Informa a última atualização dos dados do boletim."""
+
+    permission_classes = [RequerAbrangenciaParaJwt]
+    campos_abrangencia = BoletinsView.campos_abrangencia
+
+    @extend_schema(
+        parameters=[FiltrosUltimaAtualizacaoSerializer],
+        responses={200: UltimaAtualizacaoResponseSerializer},
+        operation_id="boletim_obter_ultima_atualizacao",
+        tags=["Boletim"],
+    )
+    def get(self, request: Request) -> Response:
+        """Retorna a maior data de atualização no recorte informado."""
+        filtros = FiltrosUltimaAtualizacaoSerializer(data=request.query_params)
+        filtros.is_valid(raise_exception=True)
+        filtros_informados = {
+            nome: valor
+            for nome, valor in filtros.validated_data.items()
+            if nome in request.query_params
+        }
+        ultima_atualizacao = BoletimService().obter_ultima_atualizacao(
+            filtros_informados
+        )
+        resposta = UltimaAtualizacaoResponseSerializer(
+            {"ultima_atualizacao": ultima_atualizacao}
+        )
+        return Response(resposta.data)
 
 
 class BoletinsPdfView(BaseAPIView):

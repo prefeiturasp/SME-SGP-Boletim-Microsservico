@@ -65,6 +65,47 @@ class FiltrosBoletinsPdfSerializer(FiltrosBoletinsSerializer):
     )
 
 
+class FiltrosUltimaAtualizacaoSerializer(serializers.Serializer):
+    """Valida os filtros opcionais da última atualização do boletim."""
+
+    ano_letivo = serializers.IntegerField(required=False, min_value=2000)
+    dre_codigo = serializers.CharField(required=False)
+    ue_codigo = serializers.CharField(required=False)
+    semestre = serializers.IntegerField(
+        required=False,
+        min_value=0,
+        max_value=2,
+    )
+    turma_codigo = serializers.CharField(required=False)
+    modalidade = serializers.ChoiceField(
+        choices=MODALIDADES_CHOICES,
+        required=False,
+        help_text=_DESCRICAO_CAMPO_MODALIDADE,
+    )
+    alunos_codigo = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+    )
+    considera_inativo = serializers.BooleanField(
+        required=False,
+        help_text="Indica se estudantes inativos devem ser incluídos.",
+    )
+    bimestre = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=4,
+    )
+
+
+class UltimaAtualizacaoResponseSerializer(serializers.Serializer):
+    """Serializa a última atualização dos dados do boletim."""
+
+    ultimaAtualizacao = serializers.DateTimeField(  # noqa: N815
+        source="ultima_atualizacao",
+        allow_null=True,
+    )
+
+
 class DadosAlunoBoletimSerializer(serializers.Serializer):
     """Serializa a identificação do aluno e de sua turma."""
 

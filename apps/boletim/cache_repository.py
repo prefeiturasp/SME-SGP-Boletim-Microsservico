@@ -4,6 +4,7 @@ import hashlib
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime
 
 from django.conf import settings
 
@@ -38,7 +39,7 @@ class BoletimCacheRepository:
     ) -> str:
         """Gera uma chave determinística a partir dos filtros da consulta."""
         filtros = {
-            "alunos_codigo": sorted(set(alunos_codigo)),
+            "alunos_codigo": alunos_codigo,
             "ano_letivo": ano_letivo,
             "bimestre": bimestre,
             "considera_inativo": considera_inativo,
@@ -48,19 +49,49 @@ class BoletimCacheRepository:
             "turma_codigo": turma_codigo,
             "ue_codigo": ue_codigo,
         }
-        conteudo = json.dumps(
-            filtros,
-            ensure_ascii=True,
-            separators=(",", ":"),
-            sort_keys=True,
-        )
-        resumo = hashlib.sha256(conteudo.encode("utf-8")).hexdigest()
+        resumo = BoletimCacheRepository._gerar_resumo(filtros)
         return f"boletim:consulta:{resumo}"
 
     def obter(self, chave: str) -> list[dict[str, object]] | None:
         """Busca boletins sem interromper a consulta em falhas do cache."""
         resultado = self._cache_repository.obter(chave)
         return resultado if isinstance(resultado, list) else None
+
+    @staticmethod
+    def gerar_chave_ultima_atualizacao(
+        filtros: dict[str, object],
+    ) -> str:
+        """Gera a chave da última atualização com filtros normalizados."""
+        resumo = BoletimCacheRepository._gerar_resumo(filtros)
+        return f"boletim:ultima-atualizacao:{resumo}"
+
+    @staticmethod
+    def _gerar_resumo(filtros: dict[str, object]) -> str:
+        """Normaliza os filtros e gera seu resumo SHA-256."""
+        filtros_normalizados = {
+            nome: sorted(set(valor)) if isinstance(valor, list) else valor
+            for nome, valor in filtros.items()
+        }
+        conteudo = json.dumps(
+            filtros_normalizados,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        return hashlib.sha256(conteudo.encode("utf-8")).hexdigest()
+
+    def obter_ultima_atualizacao(
+        self,
+        chave: str,
+    ) -> tuple[bool, datetime | None]:
+        """Busca a atualização e diferencia valor nulo de cache miss."""
+        resultado = self._cache_repository.obter(chave)
+        if not isinstance(resultado, dict):
+            return False, None
+        atualizacao = resultado.get("ultima_atualizacao")
+        if atualizacao is not None and not isinstance(atualizacao, datetime):
+            return False, None
+        return True, atualizacao
 
     def armazenar(
         self,
@@ -72,6 +103,18 @@ class BoletimCacheRepository:
             chave,
             boletins,
             ttl=settings.CACHE_BOLETIM_TTL,
+        )
+
+    def armazenar_ultima_atualizacao(
+        self,
+        chave: str,
+        ultima_atualizacao: datetime | None,
+    ) -> None:
+        """Armazena a atualização por dois minutos por padrão."""
+        self._cache_repository.armazenar(
+            chave,
+            {"ultima_atualizacao": ultima_atualizacao},
+            ttl=settings.CACHE_ULTIMA_ATUALIZACAO_TTL,
         )
 
     @contextmanager

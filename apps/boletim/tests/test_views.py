@@ -16,6 +16,7 @@ from apps.boletim.serializers import MODALIDADES_CHOICES
 
 _URL_COLETIVA = "/api/boletim/"
 _URL_PDF = "/api/boletim/pdf/"
+_URL_ULTIMA_ATUALIZACAO = "/api/boletim/ultima-atualizacao/"
 
 
 def _boletim() -> dict[str, object]:
@@ -375,6 +376,60 @@ class TestBoletinsView(TestCase):
         )
 
 
+class TestUltimaAtualizacaoBoletimView(TestCase):
+    """Valida o contrato HTTP da última atualização do boletim."""
+
+    def setUp(self) -> None:
+        """Prepara um cliente autenticado para os testes."""
+        self.client = _cliente_autenticado()
+
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_retorna_atualizacao_global_sem_filtros(
+        self, service_class
+    ) -> None:
+        """Retorna a maior atualização global sem exigir parâmetros."""
+        service_class.return_value.obter_ultima_atualizacao.return_value = (
+            datetime(2026, 10, 13, 12, 30, tzinfo=UTC)
+        )
+
+        response = self.client.get(_URL_ULTIMA_ATUALIZACAO)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {"ultimaAtualizacao": "2026-10-13T09:30:00-03:00"},
+        )
+        service_class.return_value.obter_ultima_atualizacao.assert_called_once_with(
+            {}
+        )
+
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_encaminha_filtros_opcionais(self, service_class) -> None:
+        """Valida e encaminha somente os filtros enviados pelo cliente."""
+        service_class.return_value.obter_ultima_atualizacao.return_value = None
+
+        response = self.client.get(
+            _URL_ULTIMA_ATUALIZACAO,
+            {
+                "ano_letivo": 2026,
+                "modalidade": 5,
+                "alunos_codigo": [123, 456],
+                "considera_inativo": False,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"ultimaAtualizacao": None})
+        service_class.return_value.obter_ultima_atualizacao.assert_called_once_with(
+            {
+                "ano_letivo": 2026,
+                "modalidade": 5,
+                "alunos_codigo": [123, 456],
+                "considera_inativo": False,
+            }
+        )
+
+
 class TestBoletinsPdfView(TestCase):
     """Valida o contrato HTTP da geração coletiva em PDF."""
 
@@ -532,6 +587,17 @@ class TestDocumentacaoBoletim(TestCase):
                 "bimestre",
                 "boletins_por_pagina",
             },
+            "/api/boletim/ultima-atualizacao/": {
+                "ano_letivo",
+                "dre_codigo",
+                "ue_codigo",
+                "semestre",
+                "turma_codigo",
+                "modalidade",
+                "alunos_codigo",
+                "considera_inativo",
+                "bimestre",
+            },
         }
         for caminho, esperados in esperados_por_caminho.items():
             parametros = schema["paths"][caminho]["get"]["parameters"]
@@ -551,6 +617,7 @@ class TestDocumentacaoBoletim(TestCase):
         for caminho in (
             "/api/boletim/",
             "/api/boletim/pdf/",
+            "/api/boletim/ultima-atualizacao/",
         ):
             parametros = schema["paths"][caminho]["get"]["parameters"]
             modalidade = next(

@@ -87,6 +87,9 @@ if _EM_TESTE:
 KEYDB_URL = os.environ.get("KEYDB_URL", "")
 KEYDB_ENABLED = bool(KEYDB_URL and not _EM_TESTE)
 CACHE_BOLETIM_TTL = int(os.environ.get("CACHE_BOLETIM_TTL", "1800"))
+CACHE_ULTIMA_ATUALIZACAO_TTL = int(
+    os.environ.get("CACHE_ULTIMA_ATUALIZACAO_TTL", "120")
+)
 CACHE_ABRANGENCIA_TTL = int(os.environ.get("CACHE_ABRANGENCIA_TTL", "300"))
 CACHE_LOCK_TTL = int(os.environ.get("CACHE_LOCK_TTL", "30"))
 CACHE_LOCK_WAIT_TIMEOUT = float(os.environ.get("CACHE_LOCK_WAIT_TIMEOUT", "2"))
