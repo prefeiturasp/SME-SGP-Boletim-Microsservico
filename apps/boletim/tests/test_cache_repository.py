@@ -1,5 +1,6 @@
 """Testes do cache dos boletins."""
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from django.test import SimpleTestCase, override_settings
@@ -48,6 +49,45 @@ class TestBoletimCacheRepository(SimpleTestCase):
         resultado = BoletimCacheRepository(cache_repository).obter("chave")
 
         self.assertIsNone(resultado)
+
+    def test_normaliza_filtros_da_chave_de_ultima_atualizacao(self) -> None:
+        """Ignora a ordem dos alunos na chave da última atualização."""
+        primeira = BoletimCacheRepository.gerar_chave_ultima_atualizacao(
+            {"ano_letivo": 2026, "alunos_codigo": [30, 10, 30]}
+        )
+        segunda = BoletimCacheRepository.gerar_chave_ultima_atualizacao(
+            {"alunos_codigo": [10, 30], "ano_letivo": 2026}
+        )
+
+        self.assertEqual(primeira, segunda)
+        self.assertTrue(primeira.startswith("boletim:ultima-atualizacao:"))
+
+    def test_diferencia_atualizacao_nula_de_cache_miss(self) -> None:
+        """Reconhece como cache hit uma atualização armazenada como nula."""
+        cache_repository = MagicMock()
+        cache_repository.obter.return_value = {"ultima_atualizacao": None}
+
+        resultado = BoletimCacheRepository(
+            cache_repository
+        ).obter_ultima_atualizacao("chave")
+
+        self.assertEqual(resultado, (True, None))
+
+    @override_settings(CACHE_ULTIMA_ATUALIZACAO_TTL=120)
+    def test_armazena_ultima_atualizacao_por_dois_minutos(self) -> None:
+        """Usa o TTL exclusivo de 120 segundos para a atualização."""
+        cache_repository = MagicMock()
+        atualizacao = datetime(2026, 10, 13, 12, 30, tzinfo=UTC)
+
+        BoletimCacheRepository(cache_repository).armazenar_ultima_atualizacao(
+            "chave", atualizacao
+        )
+
+        cache_repository.armazenar.assert_called_once_with(
+            "chave",
+            {"ultima_atualizacao": atualizacao},
+            ttl=120,
+        )
 
     @staticmethod
     def _gerar_chave(

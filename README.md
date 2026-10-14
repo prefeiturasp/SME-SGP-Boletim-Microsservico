@@ -125,6 +125,7 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 | GET | `/api/boletim/health/` | Verifica a saúde do processo. |
 | GET | `/api/boletim/` | Retorna os boletins consolidados dos estudantes selecionados. |
 | GET | `/api/boletim/pdf/` | Gera os boletins selecionados em PDF. |
+| GET | `/api/boletim/ultima-atualizacao/` | Retorna a última atualização global ou do recorte filtrado. |
 
 ### Filtros dos boletins
 
@@ -167,6 +168,7 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 | `DB_POOL_SIZE` | `5` | Quantidade de conexões persistentes do pool. |
 | `KEYDB_URL` | `redis://keydb:6379/0` | URL da instância KeyDB usada pelo cache de boletins. |
 | `CACHE_BOLETIM_TTL` | `1800` | Validade do cache de boletins, em segundos. |
+| `CACHE_ULTIMA_ATUALIZACAO_TTL` | `120` | Validade do cache da última atualização do boletim, em segundos. |
 | `CACHE_ABRANGENCIA_TTL` | `300` | Validade da abrangência vigente por login e perfil, em segundos. |
 | `CACHE_LOCK_TTL` | `30` | Validade máxima de um lock distribuído, em segundos. |
 | `CACHE_LOCK_WAIT_TIMEOUT` | `2` | Espera máxima pela aquisição de um lock, em segundos. |

@@ -1,5 +1,6 @@
 """Testes do repositório de boletim."""
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase
@@ -70,3 +71,22 @@ class TestBoletimRepository(SimpleTestCase):
             modalidade_codigo=5,
         )
         consulta.filter.assert_not_called()
+
+    @patch("apps.boletim.repository.Boletim.objects")
+    def test_obtem_ultima_atualizacao_com_filtros(
+        self, objects: MagicMock
+    ) -> None:
+        """Calcula a maior atualização após aplicar os filtros recebidos."""
+        esperado = datetime(2026, 10, 13, 12, 30, tzinfo=UTC)
+        consulta = objects.filter.return_value
+        consulta.aggregate.return_value = {"ultima_atualizacao": esperado}
+
+        resultado = BoletimRepository().obter_ultima_atualizacao(
+            {"ano_letivo": 2026, "turma_codigo": "1234567"}
+        )
+
+        objects.filter.assert_called_once_with(
+            ano_letivo=2026,
+            turma_codigo="1234567",
+        )
+        self.assertEqual(resultado, esperado)

@@ -6,6 +6,7 @@ from apps.boletim.cache_repository import BoletimCacheRepository
 from apps.boletim.constantes import (
     BIMESTRES_ANUAIS,
     BIMESTRES_SEMESTRAIS,
+    CODIGO_SITUACAO_ALUNO_ATIVO,
     MODALIDADES_SEMESTRAIS,
 )
 from apps.boletim.models import Boletim
@@ -54,6 +55,80 @@ class BoletimService:
         """
         self._repository = repository or BoletimRepository()
         self._cache_repository = cache_repository or BoletimCacheRepository()
+
+    def obter_ultima_atualizacao(
+        self,
+        filtros: dict[str, object],
+    ) -> datetime | None:
+        """Obtém a última atualização no recorte opcional solicitado.
+
+        Args:
+            filtros: Filtros validados com os nomes do contrato HTTP.
+
+        Returns:
+            Maior instante de atualização ou `None` na ausência de dados.
+        """
+        chave_cache = self._cache_repository.gerar_chave_ultima_atualizacao(
+            filtros
+        )
+        encontrado, ultima_atualizacao = (
+            self._cache_repository.obter_ultima_atualizacao(chave_cache)
+        )
+        if encontrado:
+            return ultima_atualizacao
+
+        with self._cache_repository.bloquear(chave_cache) as adquirido:
+            if adquirido:
+                encontrado, ultima_atualizacao = (
+                    self._cache_repository.obter_ultima_atualizacao(
+                        chave_cache
+                    )
+                )
+                if encontrado:
+                    return ultima_atualizacao
+                return self._consultar_e_armazenar_ultima_atualizacao(
+                    chave_cache,
+                    filtros,
+                )
+
+        encontrado, ultima_atualizacao = (
+            self._cache_repository.obter_ultima_atualizacao(chave_cache)
+        )
+        if encontrado:
+            return ultima_atualizacao
+        return self._consultar_ultima_atualizacao(filtros)
+
+    def _consultar_e_armazenar_ultima_atualizacao(
+        self,
+        chave_cache: str,
+        filtros: dict[str, object],
+    ) -> datetime | None:
+        """Consulta e armazena a última atualização no cache."""
+        ultima_atualizacao = self._consultar_ultima_atualizacao(filtros)
+        self._cache_repository.armazenar_ultima_atualizacao(
+            chave_cache,
+            ultima_atualizacao,
+        )
+        return ultima_atualizacao
+
+    def _consultar_ultima_atualizacao(
+        self,
+        filtros: dict[str, object],
+    ) -> datetime | None:
+        """Mapeia os filtros e consulta a última atualização no banco."""
+        filtros_model = {
+            {
+                "modalidade": "modalidade_codigo",
+                "alunos_codigo": "aluno_codigo__in",
+            }.get(nome, nome): valor
+            for nome, valor in filtros.items()
+            if nome != "considera_inativo"
+        }
+        if filtros.get("considera_inativo") is False:
+            filtros_model["codigo_situacao_matricula__in"] = (
+                CODIGO_SITUACAO_ALUNO_ATIVO
+            )
+        return self._repository.obter_ultima_atualizacao(filtros_model)
 
     def listar_boletins(
         self,
