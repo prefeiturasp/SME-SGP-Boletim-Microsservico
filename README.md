@@ -153,6 +153,8 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 | `DJANGO_SECRET_KEY` | Definido em `.env.example` | Chave de assinatura do Django; deve ser substituída fora do ambiente local. |
 | `DJANGO_DEBUG` | `1` | Habilita o modo de depuração. |
 | `DJANGO_ALLOWED_HOSTS` | `*` | Hosts aceitos pelo Django. |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Origens autorizadas a consumir a API no navegador, separadas por vírgula. |
+| `CORS_ALLOW_CREDENTIALS` | `true` | Permite credenciais nas requisições CORS das origens autorizadas. |
 | `API_KEY` | `dev-key-default` | Credencial exigida pelos endpoints protegidos. |
 | `API_KEY_HEADER` | `X-API-Key` | Nome do header da credencial. |
 | `PEDAGOGICO_API_URL` | — | URL base da API Pedagógica usada para consultar a abrangência vigente. |

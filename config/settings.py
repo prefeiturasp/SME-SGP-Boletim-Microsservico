@@ -46,6 +46,7 @@ def _parse_db_url(url: Any) -> dict[str, Any]:
 
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
     "drf_spectacular",
     "apps.core.apps.CoreConfig",
@@ -56,8 +57,21 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "sme_sidecar_sdk.integrations.django.ObservabilityMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
 ]
+
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
+    ).split(",")
+    if origin.strip()
+]
+CORS_ALLOW_CREDENTIALS = os.environ.get(
+    "CORS_ALLOW_CREDENTIALS", "True"
+).lower() in ("true", "1")
+CORS_EXPOSE_HEADERS = ["Content-Disposition", "X-Mensagem"]
 
 ROOT_URLCONF = "config.urls"
 TEMPLATES = [
