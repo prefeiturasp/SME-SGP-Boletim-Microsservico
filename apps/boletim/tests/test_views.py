@@ -58,6 +58,29 @@ class TestBoletinsView(TestCase):
         """Prepara um cliente autenticado para os testes."""
         self.client = _cliente_autenticado()
 
+    def test_permite_preflight_do_pdf_sem_autenticacao(self) -> None:
+        """Responde ao preflight do PDF antes de exigir autenticação."""
+        client = APIClient()
+
+        response = client.options(
+            _URL_PDF,
+            HTTP_ORIGIN="http://localhost:3000",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS="authorization, accept",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Access-Control-Allow-Origin"],
+            "http://localhost:3000",
+        )
+        self.assertIn("GET", response["Access-Control-Allow-Methods"])
+        self.assertIn(
+            "authorization", response["Access-Control-Allow-Headers"]
+        )
+        self.assertEqual(response["Access-Control-Allow-Credentials"], "true")
+        self.assertIn("origin", response["Vary"].lower())
+
     @patch("apps.boletim.api.views.BoletimService")
     def test_retorna_boletins_de_varios_alunos(self, service_class) -> None:
         """Aceita vários códigos de aluno e retorna uma lista."""
