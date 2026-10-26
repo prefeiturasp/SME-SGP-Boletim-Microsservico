@@ -107,6 +107,9 @@ CACHE_ULTIMA_ATUALIZACAO_TTL = int(
 CACHE_ABRANGENCIA_TTL = int(os.environ.get("CACHE_ABRANGENCIA_TTL", "300"))
 CACHE_LOCK_TTL = int(os.environ.get("CACHE_LOCK_TTL", "30"))
 CACHE_LOCK_WAIT_TIMEOUT = float(os.environ.get("CACHE_LOCK_WAIT_TIMEOUT", "2"))
+CACHE_PDF_TTL = int(os.environ.get("CACHE_PDF_TTL", str(CACHE_BOLETIM_TTL)))
+CACHE_PDF_LOCK_TTL = int(os.environ.get("CACHE_PDF_LOCK_TTL", "300"))
+PDF_MAX_WORKERS = max(1, int(os.environ.get("PDF_MAX_WORKERS", "2")))
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.dummy.DummyCache",

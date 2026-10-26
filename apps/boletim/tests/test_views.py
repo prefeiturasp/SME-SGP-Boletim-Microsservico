@@ -460,15 +460,14 @@ class TestBoletinsPdfView(TestCase):
         """Prepara um cliente autenticado para os testes."""
         self.client = _cliente_autenticado()
 
-    @patch("apps.boletim.api.views.GeradorBoletinsPdf")
     @patch("apps.boletim.api.views.BoletimService")
     def test_retorna_pdf_com_dois_boletins_por_padrao(
-        self, service_class, gerador_class
+        self, service_class
     ) -> None:
         """Gera PDF inline e usa duas vias por página como no relatório."""
-        boletins = [_boletim()]
-        service_class.return_value.listar_boletins.return_value = boletins
-        gerador_class.return_value.gerar.return_value = b"%PDF-teste"
+        service_class.return_value.gerar_boletins_pdf.return_value = (
+            b"%PDF-teste"
+        )
 
         response = self.client.get(_URL_PDF, self._filtros())
 
@@ -478,9 +477,18 @@ class TestBoletinsPdfView(TestCase):
             response["Content-Disposition"],
             'inline; filename="boletins-escolares.pdf"',
         )
-        gerador_class.return_value.gerar.assert_called_once_with(
-            boletins,
+        self.assertEqual(response.content, b"%PDF-teste")
+        service_class.return_value.gerar_boletins_pdf.assert_called_once_with(
+            ano_letivo=2026,
+            dre_codigo="108200",
+            ue_codigo="094501",
+            semestre=1,
+            modalidade=5,
+            alunos_codigo=[],
             boletins_por_pagina=2,
+            considera_inativo=False,
+            turma_codigo=None,
+            bimestre=None,
         )
 
     def test_rejeita_quantidade_de_boletins_nao_suportada(self) -> None:
@@ -493,14 +501,12 @@ class TestBoletinsPdfView(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("boletins_por_pagina", response.json())
 
-    @patch("apps.boletim.api.views.GeradorBoletinsPdf")
     @patch("apps.boletim.api.views.BoletimService")
-    def test_negocia_pdf_solicitado_pelo_swagger(
-        self, service_class, gerador_class
-    ) -> None:
+    def test_negocia_pdf_solicitado_pelo_swagger(self, service_class) -> None:
         """Aceita o media type de PDF enviado pelo Swagger UI."""
-        service_class.return_value.listar_boletins.return_value = [_boletim()]
-        gerador_class.return_value.gerar.return_value = b"%PDF-teste"
+        service_class.return_value.gerar_boletins_pdf.return_value = (
+            b"%PDF-teste"
+        )
 
         response = self.client.get(
             _URL_PDF,
@@ -524,14 +530,14 @@ class TestBoletinsPdfView(TestCase):
         self.assertEqual(response["Content-Type"], "application/json")
         self.assertIn("dre_codigo", response.json())
 
-    @patch("apps.boletim.api.views.GeradorBoletinsPdf")
     @patch("apps.boletim.api.views.BoletimService")
     def test_pdf_permite_incluir_estudantes_inativos(
-        self, service_class, gerador_class
+        self, service_class
     ) -> None:
         """Encaminha estudantes inativos para a consulta do PDF."""
-        service_class.return_value.listar_boletins.return_value = [_boletim()]
-        gerador_class.return_value.gerar.return_value = b"%PDF-teste"
+        service_class.return_value.gerar_boletins_pdf.return_value = (
+            b"%PDF-teste"
+        )
         filtros = self._filtros()
         filtros["considera_inativo"] = True
 
@@ -539,18 +545,17 @@ class TestBoletinsPdfView(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
-            service_class.return_value.listar_boletins.call_args.kwargs[
+            service_class.return_value.gerar_boletins_pdf.call_args.kwargs[
                 "considera_inativo"
             ]
         )
 
-    @patch("apps.boletim.api.views.GeradorBoletinsPdf")
     @patch("apps.boletim.api.views.BoletimService")
     def test_pdf_retorna_sem_conteudo_quando_nao_ha_dados(
-        self, service_class, gerador_class
+        self, service_class
     ) -> None:
         """Retorna HTTP 204 sem corpo nem PDF quando a consulta está vazia."""
-        service_class.return_value.listar_boletins.return_value = []
+        service_class.return_value.gerar_boletins_pdf.return_value = None
 
         response = self.client.get(_URL_PDF, self._filtros())
 
@@ -560,7 +565,6 @@ class TestBoletinsPdfView(TestCase):
             response["X-Mensagem"],
             "Alunos da turma não foram encontrados.",
         )
-        gerador_class.return_value.gerar.assert_not_called()
 
     @staticmethod
     def _filtros() -> dict[str, int | str]:

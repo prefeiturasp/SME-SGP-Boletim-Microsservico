@@ -3,7 +3,8 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    GUNICORN_CMD_ARGS="--workers 3 --timeout 300"
 
 WORKDIR /app
 
@@ -24,5 +25,5 @@ COPY scripts /app/scripts
 RUN pip install --upgrade pip \
     && pip install -r /app/requirements/base.txt
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
 

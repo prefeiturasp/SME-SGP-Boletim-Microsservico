@@ -10,6 +10,7 @@ from apps.boletim.constantes import (
     MODALIDADES_SEMESTRAIS,
 )
 from apps.boletim.models import Boletim
+from apps.boletim.relatorios.gerador_pdf import GeradorBoletinsPdf
 from apps.boletim.repository import BoletimRepository
 
 _CAMPOS_SEM_DADOS = (
@@ -46,15 +47,100 @@ class BoletimService:
         self,
         repository: BoletimRepository | None = None,
         cache_repository: BoletimCacheRepository | None = None,
+        gerador_pdf: GeradorBoletinsPdf | None = None,
     ) -> None:
         """Inicializa o serviço com seu repositório.
 
         Args:
             repository: Repositório opcional para consulta dos dados.
             cache_repository: Repositório opcional do cache compartilhado.
+            gerador_pdf: Gerador opcional do documento PDF.
         """
         self._repository = repository or BoletimRepository()
         self._cache_repository = cache_repository or BoletimCacheRepository()
+        self._gerador_pdf = gerador_pdf or GeradorBoletinsPdf()
+
+    def gerar_boletins_pdf(
+        self,
+        ano_letivo: int,
+        dre_codigo: str,
+        ue_codigo: str,
+        semestre: int,
+        modalidade: int,
+        alunos_codigo: list[int],
+        boletins_por_pagina: int,
+        considera_inativo: bool = False,
+        turma_codigo: str | None = None,
+        bimestre: int | None = None,
+    ) -> bytes | None:
+        """Gera o PDF dos boletins, reaproveitando o documento em cache.
+
+        A renderização é a etapa mais cara da requisição; o PDF pronto fica
+        no cache e um lock evita que requisições repetidas renderizem o
+        mesmo documento ao mesmo tempo.
+
+        Args:
+            ano_letivo: Ano letivo consultado.
+            dre_codigo: Código da DRE.
+            ue_codigo: Código da unidade escolar.
+            semestre: Semestre da turma.
+            modalidade: Código da modalidade.
+            alunos_codigo: Códigos dos alunos; vazio seleciona todos.
+            boletins_por_pagina: Quantidade máxima de boletins por página.
+            considera_inativo: Indica se estudantes inativos serão incluídos.
+            turma_codigo: Código opcional da turma.
+            bimestre: Bimestre opcional usado como filtro de exibição.
+
+        Returns:
+            Bytes do PDF ou `None` quando nenhum aluno for encontrado.
+        """
+        chave_pdf = self._cache_repository.gerar_chave_pdf(
+            self._cache_repository.gerar_chave(
+                ano_letivo=ano_letivo,
+                dre_codigo=dre_codigo,
+                ue_codigo=ue_codigo,
+                semestre=semestre,
+                modalidade=modalidade,
+                alunos_codigo=alunos_codigo,
+                considera_inativo=considera_inativo,
+                turma_codigo=turma_codigo,
+                bimestre=bimestre,
+            ),
+            boletins_por_pagina,
+        )
+
+        def renderizar() -> bytes | None:
+            boletins = self.listar_boletins(
+                ano_letivo=ano_letivo,
+                dre_codigo=dre_codigo,
+                ue_codigo=ue_codigo,
+                semestre=semestre,
+                modalidade=modalidade,
+                alunos_codigo=alunos_codigo,
+                considera_inativo=considera_inativo,
+                turma_codigo=turma_codigo,
+                bimestre=bimestre,
+            )
+            if not boletins:
+                return None
+            pdf = self._gerador_pdf.gerar(
+                boletins,
+                boletins_por_pagina=boletins_por_pagina,
+            )
+            self._cache_repository.armazenar_pdf(chave_pdf, pdf)
+            return pdf
+
+        pdf = self._cache_repository.obter_pdf(chave_pdf)
+        if pdf is not None:
+            return pdf
+
+        with self._cache_repository.bloquear_pdf(chave_pdf) as adquirido:
+            if adquirido:
+                pdf = self._cache_repository.obter_pdf(chave_pdf)
+                return pdf if pdf is not None else renderizar()
+
+        pdf = self._cache_repository.obter_pdf(chave_pdf)
+        return pdf if pdf is not None else renderizar()
 
     def obter_ultima_atualizacao(
         self,
