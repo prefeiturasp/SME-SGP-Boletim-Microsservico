@@ -73,15 +73,15 @@ class GeradorBoletinsPdf:
         Returns:
             Bytes do PDF de cada lote, na mesma ordem dos lotes recebidos.
         """
-        trabalhadores = min(
+        workers = min(
             len(lotes),
             settings.PDF_MAX_WORKERS,
             os.cpu_count() or 1,
         )
-        if trabalhadores == 1:
+        if workers == 1:
             return [_renderizar_lote(lote) for lote in lotes]
         with ProcessPoolExecutor(
-            max_workers=trabalhadores,
+            max_workers=workers,
             mp_context=_CONTEXTO_MULTIPROCESSO,
             initializer=_inicializar_worker,
         ) as executor:

@@ -73,12 +73,12 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
     @override_settings(PDF_MAX_WORKERS=1)
     @patch("apps.boletim.relatorios.gerador_pdf.ProcessPoolExecutor")
     @patch("apps.boletim.relatorios.gerador_pdf._renderizar_lote")
-    def test_renderiza_em_sequencia_com_um_trabalhador(
+    def test_renderiza_em_sequencia_com_um_worker(
         self,
         renderizar_lote_mock: MagicMock,
         executor_mock: MagicMock,
     ) -> None:
-        """Evita processos filhos quando o limite é de um trabalhador."""
+        """Evita processos filhos quando o limite é de um worker."""
         renderizar_lote_mock.side_effect = [b"lote-1", b"lote-2"]
 
         resultado = GeradorBoletinsPdf._renderizar_lotes_em_paralelo(
