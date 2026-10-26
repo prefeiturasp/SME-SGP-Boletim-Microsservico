@@ -41,6 +41,59 @@ class TestBoletimCacheRepository(SimpleTestCase):
             ttl=900,
         )
 
+    def test_chave_do_pdf_diferencia_boletins_por_pagina(self) -> None:
+        """Separa PDFs da mesma consulta com layouts distintos."""
+        chave_consulta = self._gerar_chave([10])
+
+        um = BoletimCacheRepository.gerar_chave_pdf(chave_consulta, 1)
+        dois = BoletimCacheRepository.gerar_chave_pdf(chave_consulta, 2)
+
+        self.assertNotEqual(um, dois)
+        self.assertTrue(um.startswith("boletim:pdf:"))
+        self.assertTrue(um.endswith(":1"))
+
+    @override_settings(CACHE_PDF_TTL=600)
+    def test_armazena_pdf_com_ttl_configurado(self) -> None:
+        """Usa a validade específica dos PDFs renderizados."""
+        cache_repository = MagicMock()
+
+        BoletimCacheRepository(cache_repository).armazenar_pdf(
+            "chave",
+            b"%PDF",
+        )
+
+        cache_repository.armazenar.assert_called_once_with(
+            "chave",
+            b"%PDF",
+            ttl=600,
+        )
+
+    def test_descarta_pdf_com_tipo_inesperado(self) -> None:
+        """Trata valores que não são bytes como cache miss."""
+        cache_repository = MagicMock()
+        cache_repository.obter.return_value = "texto"
+
+        resultado = BoletimCacheRepository(cache_repository).obter_pdf("chave")
+
+        self.assertIsNone(resultado)
+
+    @override_settings(CACHE_PDF_LOCK_TTL=300, CACHE_LOCK_WAIT_TIMEOUT=2)
+    def test_bloqueia_pdf_pelo_tempo_da_renderizacao(self) -> None:
+        """Mantém o lock do PDF por mais tempo que o lock da consulta."""
+        cache_repository = MagicMock()
+        cache_repository.bloquear.return_value.__enter__.return_value = True
+
+        with BoletimCacheRepository(cache_repository).bloquear_pdf(
+            "chave"
+        ) as adquirido:
+            self.assertTrue(adquirido)
+
+        cache_repository.bloquear.assert_called_once_with(
+            "chave",
+            ttl=300,
+            espera=2,
+        )
+
     def test_ausencia_de_valor_retorna_cache_vazio(self) -> None:
         """Representa a ausência de valor como cache miss."""
         cache_repository = MagicMock()

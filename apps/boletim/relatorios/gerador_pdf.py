@@ -7,6 +7,7 @@ from collections.abc import Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from typing import cast
 
+from django.conf import settings
 from django.template.loader import render_to_string
 from django_weasyprint.utils import DjangoURLFetcher
 from pypdf import PdfWriter
@@ -30,9 +31,9 @@ class GeradorBoletinsPdf:
 
         O layout do PDF roda em um único núcleo e seu custo cresce com o
         número de páginas; documentos com mais de um lote são renderizados
-        em processos separados e depois mesclados em bytes, para aproveitar
-        os núcleos disponíveis em relatórios grandes (por exemplo, quando
-        nenhuma turma é informada no filtro).
+        em até `PDF_MAX_WORKERS` processos e depois mesclados em bytes. O
+        limite evita disparar um processo por núcleo do nó, já que
+        `os.cpu_count()` ignora os limites de CPU do container.
 
         Args:
             boletins: Boletins consolidados retornados pelo serviço.
@@ -72,9 +73,15 @@ class GeradorBoletinsPdf:
         Returns:
             Bytes do PDF de cada lote, na mesma ordem dos lotes recebidos.
         """
-        trabalhadores = min(len(lotes), os.cpu_count() or 1)
+        workers = min(
+            len(lotes),
+            settings.PDF_MAX_WORKERS,
+            os.cpu_count() or 1,
+        )
+        if workers == 1:
+            return [_renderizar_lote(lote) for lote in lotes]
         with ProcessPoolExecutor(
-            max_workers=trabalhadores,
+            max_workers=workers,
             mp_context=_CONTEXTO_MULTIPROCESSO,
             initializer=_inicializar_worker,
         ) as executor:

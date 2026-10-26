@@ -15,7 +15,6 @@ from rest_framework.status import HTTP_204_NO_CONTENT
 from apps.abrangencia.permissions import RequerAbrangenciaParaJwt
 from apps.boletim.api.renderers import PdfRenderer
 from apps.boletim.constantes import MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS
-from apps.boletim.relatorios.gerador_pdf import GeradorBoletinsPdf
 from apps.boletim.serializers import (
     BoletimAlunoResponseSerializer,
     FiltrosBoletinsPdfSerializer,
@@ -150,26 +149,23 @@ class BoletinsPdfView(BaseAPIView):
         """Retorna os boletins selecionados como um arquivo PDF."""
         filtros = FiltrosBoletinsPdfSerializer(data=request.query_params)
         filtros.is_valid(raise_exception=True)
-        dados = BoletimService().listar_boletins(
+        pdf = BoletimService().gerar_boletins_pdf(
             ano_letivo=filtros.validated_data["ano_letivo"],
             dre_codigo=filtros.validated_data["dre_codigo"],
             ue_codigo=filtros.validated_data["ue_codigo"],
             semestre=filtros.validated_data["semestre"],
             modalidade=filtros.validated_data["modalidade"],
             alunos_codigo=filtros.validated_data["alunos_codigo"],
+            boletins_por_pagina=filtros.validated_data["boletins_por_pagina"],
             considera_inativo=filtros.validated_data["considera_inativo"],
             turma_codigo=filtros.validated_data.get("turma_codigo"),
             bimestre=filtros.validated_data.get("bimestre"),
         )
-        if not dados:
+        if pdf is None:
             return Response(
                 status=HTTP_204_NO_CONTENT,
                 headers={"X-Mensagem": MENSAGEM_ALUNOS_TURMA_NAO_ENCONTRADOS},
             )
-        pdf = GeradorBoletinsPdf().gerar(
-            dados,
-            boletins_por_pagina=filtros.validated_data["boletins_por_pagina"],
-        )
         resposta = HttpResponse(pdf, content_type="application/pdf")
         resposta["Content-Disposition"] = (
             'inline; filename="boletins-escolares.pdf"'

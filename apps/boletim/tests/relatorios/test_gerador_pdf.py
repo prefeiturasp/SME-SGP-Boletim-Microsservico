@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from django.template.loader import render_to_string
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from apps.boletim.relatorios.gerador_pdf import (
     GeradorBoletinsPdf,
@@ -69,6 +69,43 @@ class TestGeradorBoletinsPdf(SimpleTestCase):
         tamanhos = [len(lote["paginas"]) for lote in lotes]
         self.assertEqual(tamanhos, [20, 20, 1])
         mesclar_mock.assert_called_once_with([b"lote-1", b"lote-2", b"lote-3"])
+
+    @override_settings(PDF_MAX_WORKERS=1)
+    @patch("apps.boletim.relatorios.gerador_pdf.ProcessPoolExecutor")
+    @patch("apps.boletim.relatorios.gerador_pdf._renderizar_lote")
+    def test_renderiza_em_sequencia_com_um_worker(
+        self,
+        renderizar_lote_mock: MagicMock,
+        executor_mock: MagicMock,
+    ) -> None:
+        """Evita processos filhos quando o limite é de um worker."""
+        renderizar_lote_mock.side_effect = [b"lote-1", b"lote-2"]
+
+        resultado = GeradorBoletinsPdf._renderizar_lotes_em_paralelo(
+            [{"paginas": [1]}, {"paginas": [2]}]
+        )
+
+        self.assertEqual(resultado, [b"lote-1", b"lote-2"])
+        executor_mock.assert_not_called()
+
+    @override_settings(PDF_MAX_WORKERS=2)
+    @patch("apps.boletim.relatorios.gerador_pdf.os.cpu_count", return_value=32)
+    @patch("apps.boletim.relatorios.gerador_pdf.ProcessPoolExecutor")
+    def test_limita_processos_ao_configurado_mesmo_com_muitos_nucleos(
+        self,
+        executor_mock: MagicMock,
+        _cpu_count_mock: MagicMock,
+    ) -> None:
+        """Ignora os núcleos do nó e respeita `PDF_MAX_WORKERS`."""
+        executor = executor_mock.return_value.__enter__.return_value
+        executor.map.return_value = [b"lote-1", b"lote-2", b"lote-3"]
+
+        resultado = GeradorBoletinsPdf._renderizar_lotes_em_paralelo(
+            [{"paginas": [1]}, {"paginas": [2]}, {"paginas": [3]}]
+        )
+
+        self.assertEqual(resultado, [b"lote-1", b"lote-2", b"lote-3"])
+        self.assertEqual(executor_mock.call_args.kwargs["max_workers"], 2)
 
     @patch("apps.boletim.relatorios.gerador_pdf.montar_contexto_pdf")
     @patch("apps.boletim.relatorios.gerador_pdf._renderizar_lote")
