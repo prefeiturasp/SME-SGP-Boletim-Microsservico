@@ -5,34 +5,34 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
-from apps.boletim.relatorios.apresentador import montar_contexto_pdf
+from apps.boletim.apresentador import montar_contexto_exibicao
 
 
-class TestApresentadorBoletinsPdf(SimpleTestCase):
-    """Valida a preparação dos dados exibidos no PDF."""
+class TestApresentador(SimpleTestCase):
+    """Valida a preparação do contexto de exibição dos boletins."""
 
     @patch(
-        "apps.boletim.relatorios.apresentador.timezone.localtime",
+        "apps.boletim.apresentador.timezone.localtime",
         return_value=datetime(2026, 10, 7, 14, 35),
     )
-    def test_exibe_data_e_hora_da_impressao_no_rodape(
+    def test_exibe_data_e_hora_da_geracao_no_rodape(
         self,
         _: object,
     ) -> None:
-        """Formata data e hora de impressão exibidas no rodapé."""
-        contexto = montar_contexto_pdf([], 2)
+        """Formata data e hora de geração exibidas no rodapé."""
+        contexto = montar_contexto_exibicao([], 2)
 
-        self.assertEqual(contexto["data_impressao"], "07/10/2026 14:35")
+        self.assertEqual(contexto["data_geracao"], "07/10/2026 14:35")
 
     @patch(
-        "apps.boletim.relatorios.apresentador.timezone.now",
+        "apps.boletim.apresentador.timezone.now",
         return_value=datetime(2026, 10, 7, 17, 35, tzinfo=UTC),
     )
     def test_exibe_atualizacao_mais_recente_dos_dados_no_rodape(
         self,
         _: object,
     ) -> None:
-        """Exibe a consolidação mais recente entre os boletins do PDF."""
+        """Exibe a consolidação mais recente entre os boletins da exibição."""
         primeiro = self._boletim(1)
         primeiro["dados_atualizados_em"] = datetime(
             2026, 10, 7, 8, 20, tzinfo=UTC
@@ -40,7 +40,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         segundo = self._boletim(2)
         segundo["dados_atualizados_em"] = "2026-10-07T09:45:00+00:00"
 
-        contexto = montar_contexto_pdf([primeiro, segundo], 2)
+        contexto = montar_contexto_exibicao([primeiro, segundo], 2)
 
         self.assertEqual(
             contexto["dados_atualizados_em"],
@@ -49,7 +49,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
 
     def test_informa_ausencia_da_atualizacao_dos_dados(self) -> None:
         """Representa como nula a atualização ausente no boletim."""
-        contexto = montar_contexto_pdf([self._boletim(1)], 1)
+        contexto = montar_contexto_exibicao([self._boletim(1)], 1)
 
         self.assertIsNone(contexto["dados_atualizados_em"])
 
@@ -68,7 +68,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             linhas_primeira,
         ) in cenarios:
             with self.subTest(boletins_por_pagina=boletins_por_pagina):
-                contexto = montar_contexto_pdf(
+                contexto = montar_contexto_exibicao(
                     boletins,
                     boletins_por_pagina,
                 )
@@ -93,7 +93,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         """Preserva conceito e formata frequência com duas casas."""
         boletim = self._boletim(1)
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         componente = item["grupos"][0]["componentes"][0]
@@ -102,7 +102,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         self.assertEqual(item["frequencia_global"], "90.00%")
 
     @patch(
-        "apps.boletim.relatorios.apresentador.timezone.localdate",
+        "apps.boletim.apresentador.timezone.localdate",
         return_value=date(2026, 6, 1),
     )
     def test_exibe_hifen_em_bimestre_com_fechamento_futuro(
@@ -125,7 +125,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             },
         ]
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         periodos = item["grupos"][0]["componentes"][0]["periodos"]
@@ -145,7 +145,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             {"bimestre": 0, "nota": 7, "conceito": None}
         )
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         periodos = item["grupos"][0]["componentes"][0]["periodos"]
@@ -167,7 +167,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             }
         )
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         componentes = item["grupos"][0]["componentes"]
@@ -179,7 +179,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         boletim = self._boletim(1)
         boletim["dados_aluno"]["ciclo"] = "Ciclo Interdisciplinar"
 
-        contexto = montar_contexto_pdf([boletim], 2)
+        contexto = montar_contexto_exibicao([boletim], 2)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
 
@@ -190,7 +190,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         boletim = self._boletim(1)
         boletim["dados_aluno"]["numero_chamada"] = "007"
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         self.assertEqual(item["nome_aluno"], "7 - Aluno 1")
@@ -199,7 +199,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         """Mantém o cabeçalho válido para matrículas sem número de chamada."""
         boletim = self._boletim(1)
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         self.assertEqual(item["nome_aluno"], "Aluno 1")
@@ -208,7 +208,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         """Omite o par de colunas Final quando ninguém tem nota final."""
         boletim = self._boletim(1)
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         self.assertFalse(item["possui_nota_final"])
@@ -218,7 +218,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         """Troca o rótulo Nota por Conc. quando há conceito no boletim."""
         boletim = self._boletim(1)
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         self.assertTrue(item["usa_conceito"])
@@ -228,7 +228,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         """Cada grupo de matriz vira uma tabela própria no relatório."""
         boletim = self._boletim_com_regencia(modalidade_codigo=5)
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         nomes_por_grupo = [
@@ -250,7 +250,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         self.assertIsInstance(componentes, list)
         componentes[1], componentes[2] = componentes[2], componentes[1]
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         nomes_por_grupo = [
@@ -272,7 +272,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         self.assertIsInstance(componentes, list)
         componentes[2]["territorio_saber"] = True
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         nomes = [
@@ -312,7 +312,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         regencias[0]["componentes"][0]["componente_codigo"] = 218
         regencias[0]["componentes"][0]["disciplina_nome_sgp"] = "Libras"
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         nomes = [
@@ -371,7 +371,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             }
         ]
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         nomes_por_grupo = [
@@ -418,7 +418,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             "DA SAÚDE - DIVERSIDADE CULTURAL"
         )
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         componente = item["grupos"][0]["componentes"][0]
@@ -431,7 +431,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         """Turmas semestrais (EJA) mostram a regência antes dos grupos."""
         boletim = self._boletim_com_regencia(modalidade_codigo=3)
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         nomes = [
@@ -481,7 +481,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             ],
         }
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         linhas = item["grupos"][0]["componentes"]
@@ -505,14 +505,14 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             "recomendacoes_familia"
         ] = "Acompanhar tarefas"
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         self.assertEqual(item["recomendacoes_aluno"], "Estudar mais")
         self.assertEqual(item["recomendacoes_familia"], "Acompanhar tarefas")
 
     def test_remove_html_das_recomendacoes(self) -> None:
-        """Converte recomendações HTML em texto seguro para o PDF."""
+        """Converte recomendações HTML em texto seguro para exibição."""
         boletim = self._boletim(1)
         boletim["componentes"][0]["bimestres"][0][
             "recomendacoes_aluno"
@@ -521,7 +521,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
             "recomendacoes_familia"
         ] = "<div>Acompanhar&nbsp;tarefas</div>"
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         self.assertEqual(item["recomendacoes_aluno"], "Estudar mais alert(1)")
@@ -531,8 +531,8 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         """Replica a diferença entre os fluxos individual e coletivo."""
         boletim = self._boletim(1)
 
-        individual = montar_contexto_pdf([boletim], 1)
-        coletivo = montar_contexto_pdf([boletim], 2)
+        individual = montar_contexto_exibicao([boletim], 1)
+        coletivo = montar_contexto_exibicao([boletim], 2)
 
         item_individual = individual["paginas"][0]["linhas"][0]["boletins"][0]
         item_coletivo = coletivo["paginas"][0]["linhas"][0]["boletins"][0]
@@ -543,7 +543,7 @@ class TestApresentadorBoletinsPdf(SimpleTestCase):
         """Combina a abreviação da modalidade com o nome da turma."""
         boletim = self._boletim(1)
 
-        contexto = montar_contexto_pdf([boletim], 1)
+        contexto = montar_contexto_exibicao([boletim], 1)
 
         item = contexto["paginas"][0]["linhas"][0]["boletins"][0]
         self.assertEqual(item["dados"]["turma_relatorio"], "EF - Turma")

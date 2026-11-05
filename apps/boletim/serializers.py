@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from apps.boletim.constantes import QUANTIDADES_BOLETINS_POR_PAGINA
 from apps.boletim.models import Boletim
 
 MODALIDADES_CHOICES = (
@@ -55,11 +56,11 @@ class FiltrosBoletinsSerializer(serializers.Serializer):
     )
 
 
-class FiltrosBoletinsPdfSerializer(FiltrosBoletinsSerializer):
-    """Valida os filtros da geração coletiva de boletins em PDF."""
+class FiltrosExibicaoBoletinsSerializer(FiltrosBoletinsSerializer):
+    """Valida os filtros da exibição coletiva no navegador."""
 
     boletins_por_pagina = serializers.ChoiceField(
-        choices=(1, 2, 6),
+        choices=QUANTIDADES_BOLETINS_POR_PAGINA,
         default=2,
         help_text="Quantidade de boletins exibidos em cada página.",
     )
@@ -104,6 +105,89 @@ class UltimaAtualizacaoResponseSerializer(serializers.Serializer):
         source="ultima_atualizacao",
         allow_null=True,
     )
+
+
+class PeriodoExibicaoSerializer(serializers.Serializer):
+    """Define a nota e a frequência de um período no contrato de exibição."""
+
+    nota = serializers.CharField()
+    frequencia = serializers.CharField()
+
+
+class ComponenteExibicaoSerializer(serializers.Serializer):
+    """Define um componente curricular no contrato de exibição."""
+
+    nome = serializers.CharField()
+    periodos = PeriodoExibicaoSerializer(many=True)
+    eh_regencia = serializers.BooleanField()
+    primeira_linha_regencia = serializers.BooleanField(required=False)
+    linhas_regencia = serializers.IntegerField(required=False)
+
+
+class GrupoExibicaoSerializer(serializers.Serializer):
+    """Define um agrupamento de componentes no contrato de exibição."""
+
+    grupo_matriz_id = serializers.IntegerField()
+    componentes = ComponenteExibicaoSerializer(many=True)
+
+
+class DadosAlunoExibicaoSerializer(serializers.Serializer):
+    """Define a identificação do estudante no contrato de exibição."""
+
+    ano_letivo = serializers.IntegerField()
+    modalidade_codigo = serializers.IntegerField()
+    semestre = serializers.IntegerField()
+    dre_codigo = serializers.CharField()
+    dre_nome = serializers.CharField()
+    ue_codigo = serializers.CharField()
+    ue_nome = serializers.CharField()
+    turma_codigo = serializers.CharField()
+    turma_nome = serializers.CharField()
+    turma_relatorio = serializers.CharField()
+    ciclo = serializers.CharField()
+    aluno_codigo = serializers.IntegerField()
+    numero_chamada = serializers.CharField(allow_null=True)
+    aluno_nome = serializers.CharField(allow_null=True)
+    nome_social = serializers.CharField(allow_null=True)
+
+
+class BoletimExibicaoSerializer(serializers.Serializer):
+    """Define um boletim formatado no contrato de exibição."""
+
+    dados = DadosAlunoExibicaoSerializer()
+    nome_aluno = serializers.CharField()
+    periodos = serializers.ListField(child=serializers.IntegerField())
+    possui_nota_final = serializers.BooleanField()
+    usa_conceito = serializers.BooleanField()
+    exibe_legenda = serializers.BooleanField()
+    grupos = GrupoExibicaoSerializer(many=True)
+    frequencia_global = serializers.CharField()
+    parecer_conclusivo = serializers.CharField()
+    recomendacoes_aluno = serializers.CharField()
+    recomendacoes_familia = serializers.CharField()
+    exibe_recomendacoes = serializers.BooleanField()
+
+
+class LinhaExibicaoSerializer(serializers.Serializer):
+    """Define uma linha de boletins no contrato de exibição."""
+
+    boletins = BoletimExibicaoSerializer(many=True)
+
+
+class PaginaExibicaoSerializer(serializers.Serializer):
+    """Define uma página do layout no contrato de exibição."""
+
+    linhas = LinhaExibicaoSerializer(many=True)
+
+
+class ContextoExibicaoResponseSerializer(serializers.Serializer):
+    """Serializa o contexto paginado de exibição dos boletins."""
+
+    paginas = PaginaExibicaoSerializer(many=True)
+    boletins_por_pagina = serializers.IntegerField()
+    dados_atualizados_em = serializers.CharField(allow_null=True)
+    data_geracao = serializers.CharField()
+    total_paginas = serializers.IntegerField()
 
 
 class DadosAlunoBoletimSerializer(serializers.Serializer):

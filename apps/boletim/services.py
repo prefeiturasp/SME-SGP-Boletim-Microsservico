@@ -1,17 +1,23 @@
 """Casos de uso do domínio de boletim."""
 
 from datetime import datetime
+from itertools import groupby
+from operator import attrgetter
+from types import SimpleNamespace
 
+from apps.boletim.apresentador import montar_contexto_exibicao
 from apps.boletim.cache_repository import BoletimCacheRepository
 from apps.boletim.constantes import (
     BIMESTRES_ANUAIS,
     BIMESTRES_SEMESTRAIS,
     CODIGO_SITUACAO_ALUNO_ATIVO,
     MODALIDADES_SEMESTRAIS,
+    QUANTIDADES_BOLETINS_POR_PAGINA,
 )
 from apps.boletim.models import Boletim
-from apps.boletim.relatorios.gerador_pdf import GeradorBoletinsPdf
 from apps.boletim.repository import BoletimRepository
+
+RegistroBoletim = Boletim | SimpleNamespace
 
 _CAMPOS_SEM_DADOS = (
     "periodo_escolar_id",
@@ -47,100 +53,15 @@ class BoletimService:
         self,
         repository: BoletimRepository | None = None,
         cache_repository: BoletimCacheRepository | None = None,
-        gerador_pdf: GeradorBoletinsPdf | None = None,
     ) -> None:
         """Inicializa o serviço com seu repositório.
 
         Args:
             repository: Repositório opcional para consulta dos dados.
             cache_repository: Repositório opcional do cache compartilhado.
-            gerador_pdf: Gerador opcional do documento PDF.
         """
         self._repository = repository or BoletimRepository()
         self._cache_repository = cache_repository or BoletimCacheRepository()
-        self._gerador_pdf = gerador_pdf or GeradorBoletinsPdf()
-
-    def gerar_boletins_pdf(
-        self,
-        ano_letivo: int,
-        dre_codigo: str,
-        ue_codigo: str,
-        semestre: int,
-        modalidade: int,
-        alunos_codigo: list[int],
-        boletins_por_pagina: int,
-        considera_inativo: bool = False,
-        turma_codigo: str | None = None,
-        bimestre: int | None = None,
-    ) -> bytes | None:
-        """Gera o PDF dos boletins, reaproveitando o documento em cache.
-
-        A renderização é a etapa mais cara da requisição; o PDF pronto fica
-        no cache e um lock evita que requisições repetidas renderizem o
-        mesmo documento ao mesmo tempo.
-
-        Args:
-            ano_letivo: Ano letivo consultado.
-            dre_codigo: Código da DRE.
-            ue_codigo: Código da unidade escolar.
-            semestre: Semestre da turma.
-            modalidade: Código da modalidade.
-            alunos_codigo: Códigos dos alunos; vazio seleciona todos.
-            boletins_por_pagina: Quantidade máxima de boletins por página.
-            considera_inativo: Indica se estudantes inativos serão incluídos.
-            turma_codigo: Código opcional da turma.
-            bimestre: Bimestre opcional usado como filtro de exibição.
-
-        Returns:
-            Bytes do PDF ou `None` quando nenhum aluno for encontrado.
-        """
-        chave_pdf = self._cache_repository.gerar_chave_pdf(
-            self._cache_repository.gerar_chave(
-                ano_letivo=ano_letivo,
-                dre_codigo=dre_codigo,
-                ue_codigo=ue_codigo,
-                semestre=semestre,
-                modalidade=modalidade,
-                alunos_codigo=alunos_codigo,
-                considera_inativo=considera_inativo,
-                turma_codigo=turma_codigo,
-                bimestre=bimestre,
-            ),
-            boletins_por_pagina,
-        )
-
-        def renderizar() -> bytes | None:
-            boletins = self.listar_boletins(
-                ano_letivo=ano_letivo,
-                dre_codigo=dre_codigo,
-                ue_codigo=ue_codigo,
-                semestre=semestre,
-                modalidade=modalidade,
-                alunos_codigo=alunos_codigo,
-                considera_inativo=considera_inativo,
-                turma_codigo=turma_codigo,
-                bimestre=bimestre,
-            )
-            if not boletins:
-                return None
-            pdf = self._gerador_pdf.gerar(
-                boletins,
-                boletins_por_pagina=boletins_por_pagina,
-            )
-            self._cache_repository.armazenar_pdf(chave_pdf, pdf)
-            return pdf
-
-        pdf = self._cache_repository.obter_pdf(chave_pdf)
-        if pdf is not None:
-            return pdf
-
-        with self._cache_repository.bloquear_pdf(chave_pdf) as adquirido:
-            if adquirido:
-                pdf = self._cache_repository.obter_pdf(chave_pdf)
-                return pdf if pdf is not None else renderizar()
-
-        pdf = self._cache_repository.obter_pdf(chave_pdf)
-        return pdf if pdf is not None else renderizar()
 
     def obter_ultima_atualizacao(
         self,
@@ -294,6 +215,135 @@ class BoletimService:
             bimestre=bimestre,
         )
 
+    def obter_contexto_exibicao(
+        self,
+        ano_letivo: int,
+        dre_codigo: str,
+        ue_codigo: str,
+        semestre: int,
+        modalidade: int,
+        alunos_codigo: list[int],
+        boletins_por_pagina: int,
+        considera_inativo: bool = False,
+        turma_codigo: str | None = None,
+        bimestre: int | None = None,
+    ) -> dict[str, object] | None:
+        """Obtém o contexto paginado de exibição dos boletins.
+
+        Args:
+            ano_letivo: Ano letivo consultado.
+            dre_codigo: Código da DRE.
+            ue_codigo: Código da unidade escolar.
+            semestre: Semestre da turma.
+            modalidade: Código da modalidade.
+            alunos_codigo: Códigos dos alunos; vazio seleciona todos.
+            boletins_por_pagina: Quantidade de boletins em cada página.
+            considera_inativo: Indica se estudantes inativos serão incluídos.
+            turma_codigo: Código opcional da turma.
+            bimestre: Bimestre opcional usado como filtro de exibição.
+
+        Returns:
+            Contexto paginado ou `None` quando não houver boletins.
+        """
+        chave_consulta = self._cache_repository.gerar_chave(
+            ano_letivo=ano_letivo,
+            dre_codigo=dre_codigo,
+            ue_codigo=ue_codigo,
+            semestre=semestre,
+            modalidade=modalidade,
+            alunos_codigo=alunos_codigo,
+            considera_inativo=considera_inativo,
+            turma_codigo=turma_codigo,
+            bimestre=bimestre,
+        )
+        chave_contexto = self._cache_repository.gerar_chave_exibicao(
+            chave_consulta,
+            boletins_por_pagina,
+        )
+        contexto_cache = self._cache_repository.obter_exibicao(chave_contexto)
+        if contexto_cache is not None:
+            return contexto_cache
+
+        with self._cache_repository.bloquear(chave_consulta) as adquirido:
+            if adquirido:
+                contexto_cache = self._cache_repository.obter_exibicao(
+                    chave_contexto
+                )
+                if contexto_cache is not None:
+                    return contexto_cache
+                return self._consultar_contextos_exibicao(
+                    chave_consulta=chave_consulta,
+                    ano_letivo=ano_letivo,
+                    dre_codigo=dre_codigo,
+                    ue_codigo=ue_codigo,
+                    semestre=semestre,
+                    modalidade=modalidade,
+                    alunos_codigo=alunos_codigo,
+                    considera_inativo=considera_inativo,
+                    turma_codigo=turma_codigo,
+                    bimestre=bimestre,
+                ).get(boletins_por_pagina)
+
+        contexto_cache = self._cache_repository.obter_exibicao(chave_contexto)
+        if contexto_cache is not None:
+            return contexto_cache
+        return self._consultar_contextos_exibicao(
+            chave_consulta=chave_consulta,
+            ano_letivo=ano_letivo,
+            dre_codigo=dre_codigo,
+            ue_codigo=ue_codigo,
+            semestre=semestre,
+            modalidade=modalidade,
+            alunos_codigo=alunos_codigo,
+            considera_inativo=considera_inativo,
+            turma_codigo=turma_codigo,
+            bimestre=bimestre,
+        ).get(boletins_por_pagina)
+
+    def _consultar_contextos_exibicao(
+        self,
+        chave_consulta: str,
+        ano_letivo: int,
+        dre_codigo: str,
+        ue_codigo: str,
+        semestre: int,
+        modalidade: int,
+        alunos_codigo: list[int],
+        considera_inativo: bool,
+        turma_codigo: str | None,
+        bimestre: int | None,
+    ) -> dict[int, dict[str, object]]:
+        """Monta e armazena os layouts sem persistir dados intermediários."""
+        boletins = self._cache_repository.obter(chave_consulta)
+        if boletins is None:
+            boletins = self._consultar_boletins(
+                ano_letivo=ano_letivo,
+                dre_codigo=dre_codigo,
+                ue_codigo=ue_codigo,
+                semestre=semestre,
+                modalidade=modalidade,
+                alunos_codigo=alunos_codigo,
+                considera_inativo=considera_inativo,
+                turma_codigo=turma_codigo,
+                bimestre=bimestre,
+            )
+        if not boletins:
+            return {}
+
+        contextos: dict[int, dict[str, object]] = {}
+        for quantidade in QUANTIDADES_BOLETINS_POR_PAGINA:
+            chave_contexto = self._cache_repository.gerar_chave_exibicao(
+                chave_consulta,
+                quantidade,
+            )
+            contexto = dict(montar_contexto_exibicao(boletins, quantidade))
+            self._cache_repository.armazenar_exibicao(
+                chave_contexto,
+                contexto,
+            )
+            contextos[quantidade] = contexto
+        return contextos
+
     def _consultar_e_armazenar(
         self,
         chave_cache: str,
@@ -345,13 +395,12 @@ class BoletimService:
             considera_inativo=considera_inativo,
             turma_codigo=turma_codigo,
         )
-        grupos: dict[tuple[int, str], list[Boletim]] = {}
-        for registro in registros:
-            chave = (registro.aluno_codigo, registro.turma_codigo)
-            grupos.setdefault(chave, []).append(registro)
-
         boletins: list[dict[str, object]] = []
-        for registros_aluno in grupos.values():
+        for _, grupo in groupby(
+            registros,
+            key=attrgetter("aluno_codigo", "turma_codigo"),
+        ):
+            registros_aluno: list[RegistroBoletim] = list(grupo)
             modelo_aluno = registros_aluno[0]
             registros_validos = self._filtrar_componentes_validos(
                 registros_aluno
@@ -374,8 +423,8 @@ class BoletimService:
 
     @staticmethod
     def _filtrar_componentes_validos(
-        registros: list[Boletim],
-    ) -> list[Boletim]:
+        registros: list[RegistroBoletim],
+    ) -> list[RegistroBoletim]:
         """Remove linhas da base sem identificação de disciplina.
 
         Args:
@@ -393,8 +442,8 @@ class BoletimService:
 
     @staticmethod
     def _agrupar_resposta(
-        modelo_aluno: Boletim,
-        registros: list[Boletim],
+        modelo_aluno: RegistroBoletim,
+        registros: list[RegistroBoletim],
     ) -> dict[str, object]:
         """Agrupa os dados do aluno, componentes e bimestres.
 
@@ -519,8 +568,8 @@ class BoletimService:
 
     @staticmethod
     def _obter_atualizacao_dados(
-        modelo_aluno: Boletim,
-        registros: list[Boletim],
+        modelo_aluno: RegistroBoletim,
+        registros: list[RegistroBoletim],
     ) -> datetime | None:
         """Obtém a atualização mais recente dos dados acadêmicos exibidos.
 
@@ -543,8 +592,8 @@ class BoletimService:
 
     @staticmethod
     def _indexar_registros_por_componente(
-        registros: list[Boletim],
-    ) -> dict[int, list[Boletim]]:
+        registros: list[RegistroBoletim],
+    ) -> dict[int, list[RegistroBoletim]]:
         """Indexa registros que possuem código de componente.
 
         Args:
@@ -553,7 +602,7 @@ class BoletimService:
         Returns:
             Registros agrupados pelo código do componente curricular.
         """
-        registros_por_componente: dict[int, list[Boletim]] = {}
+        registros_por_componente: dict[int, list[RegistroBoletim]] = {}
         for registro in registros:
             if registro.componente_codigo is not None:
                 registros_por_componente.setdefault(
@@ -563,7 +612,7 @@ class BoletimService:
 
     @staticmethod
     def _dados_bimestre(
-        registro: Boletim,
+        registro: RegistroBoletim,
         incluir_nota: bool = True,
         incluir_frequencia: bool = True,
         incluir_sintese: bool = False,
@@ -638,7 +687,7 @@ class BoletimService:
     @staticmethod
     def _agrupar_regencia(
         regencias: dict[tuple[str, int | None], dict[str, object]],
-        registro: Boletim,
+        registro: RegistroBoletim,
     ) -> None:
         """Agrupe frequência no pai e notas nas disciplinas de regência.
 
@@ -705,8 +754,8 @@ class BoletimService:
     @staticmethod
     def _agrupar_regencia_pai(
         regencias: dict[tuple[str, int | None], dict[str, object]],
-        registro_pai: Boletim,
-        registros_por_componente: dict[int, list[Boletim]],
+        registro_pai: RegistroBoletim,
+        registros_por_componente: dict[int, list[RegistroBoletim]],
     ) -> None:
         """Agrupe o pai de regência e associe seus componentes declarados.
 
@@ -838,7 +887,9 @@ class BoletimService:
         return valor if isinstance(valor, int) else 0
 
     @staticmethod
-    def _obter_sintese_frequencia(registro: Boletim) -> str | None:
+    def _obter_sintese_frequencia(
+        registro: RegistroBoletim,
+    ) -> str | None:
         """Produza `F` ou `NF` para o fechamento final sem nota.
 
         Args:
@@ -861,7 +912,9 @@ class BoletimService:
         return "F" if percentual >= float(registro.media_frequencia) else "NF"
 
     @staticmethod
-    def _completar_bimestres(registros: list[Boletim]) -> list[Boletim]:
+    def _completar_bimestres(
+        registros: list[RegistroBoletim],
+    ) -> list[RegistroBoletim]:
         """Cria registros vazios para os bimestres sem dados.
 
         Args:
@@ -876,7 +929,9 @@ class BoletimService:
             if modalidade in MODALIDADES_SEMESTRAIS
             else BIMESTRES_ANUAIS
         )
-        grupos: dict[tuple[str, int | None, str | None], list[Boletim]] = {}
+        grupos: dict[
+            tuple[str, int | None, str | None], list[RegistroBoletim]
+        ] = {}
         for registro in registros:
             chave = (
                 registro.turma_componente_codigo or registro.turma_codigo,
@@ -904,7 +959,10 @@ class BoletimService:
         return sorted(resultado, key=BoletimService._chave_ordenacao)
 
     @staticmethod
-    def _criar_registro_vazio(modelo: Boletim, bimestre: int) -> Boletim:
+    def _criar_registro_vazio(
+        modelo: RegistroBoletim,
+        bimestre: int,
+    ) -> Boletim:
         """Produza uma cópia do componente sem dados acadêmicos.
 
         Args:
@@ -914,10 +972,14 @@ class BoletimService:
         Returns:
             Linha transitória com os dados acadêmicos vazios.
         """
-        valores = {
-            campo.attname: getattr(modelo, campo.attname)
-            for campo in Boletim._meta.concrete_fields
-        }
+        valores = (
+            vars(modelo).copy()
+            if isinstance(modelo, SimpleNamespace)
+            else {
+                campo.attname: getattr(modelo, campo.attname)
+                for campo in Boletim._meta.concrete_fields
+            }
+        )
         valores["bimestre"] = bimestre
         for campo in _CAMPOS_SEM_DADOS:
             valores[campo] = None
@@ -925,7 +987,9 @@ class BoletimService:
         return Boletim(**valores)
 
     @staticmethod
-    def _chave_ordenacao(registro: Boletim) -> tuple[int, str, int]:
+    def _chave_ordenacao(
+        registro: RegistroBoletim,
+    ) -> tuple[int, str, int]:
         """Produza a chave de ordenação das linhas do boletim.
 
         Args:

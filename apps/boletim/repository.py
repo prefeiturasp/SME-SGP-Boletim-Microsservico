@@ -1,9 +1,11 @@
 """Consultas ORM do domínio de boletim."""
 
+from collections.abc import Iterator
 from datetime import datetime
+from types import SimpleNamespace
 from typing import cast
 
-from django.db.models import Max, QuerySet
+from django.db.models import Max
 
 from apps.boletim.constantes import CODIGO_SITUACAO_ALUNO_ATIVO
 from apps.boletim.models import Boletim
@@ -22,7 +24,6 @@ _CAMPOS_BOLETIM = (
     "turma_nome",
     "ciclo",
     "aluno_codigo",
-    "codigo_situacao_matricula",
     "numero_chamada",
     "aluno_nome",
     "nome_social",
@@ -93,7 +94,7 @@ class BoletimRepository:
         alunos_codigo: list[int],
         considera_inativo: bool,
         turma_codigo: str | None = None,
-    ) -> QuerySet[Boletim]:
+    ) -> Iterator[SimpleNamespace]:
         """Lista boletins de vários alunos no contexto informado.
 
         Args:
@@ -126,13 +127,17 @@ class BoletimRepository:
         consulta = Boletim.objects.filter(**filtros)
         if alunos_codigo:
             consulta = consulta.filter(aluno_codigo__in=alunos_codigo)
-        return consulta.only(*_CAMPOS_BOLETIM).order_by(
+        valores = consulta.order_by(
             "aluno_codigo",
             "turma_codigo",
             "bimestre",
             "disciplina_nome_sgp",
             "componente_codigo",
-        )
+        ).values_list(*_CAMPOS_BOLETIM)
+        for linha in valores.iterator(chunk_size=2000):
+            yield SimpleNamespace(
+                **dict(zip(_CAMPOS_BOLETIM, linha, strict=True))
+            )
 
     def obter_ultima_atualizacao(
         self,

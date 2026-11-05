@@ -41,57 +41,51 @@ class TestBoletimCacheRepository(SimpleTestCase):
             ttl=900,
         )
 
-    def test_chave_do_pdf_diferencia_boletins_por_pagina(self) -> None:
-        """Separa PDFs da mesma consulta com layouts distintos."""
+    def test_chave_do_contexto_diferencia_boletins_por_pagina(self) -> None:
+        """Separa contextos da mesma consulta para cada layout."""
         chave_consulta = self._gerar_chave([10])
 
-        um = BoletimCacheRepository.gerar_chave_pdf(chave_consulta, 1)
-        dois = BoletimCacheRepository.gerar_chave_pdf(chave_consulta, 2)
+        um = BoletimCacheRepository.gerar_chave_exibicao(chave_consulta, 1)
+        seis = BoletimCacheRepository.gerar_chave_exibicao(chave_consulta, 6)
 
-        self.assertNotEqual(um, dois)
-        self.assertTrue(um.startswith("boletim:pdf:"))
-        self.assertTrue(um.endswith(":1"))
+        self.assertNotEqual(um, seis)
+        self.assertTrue(um.startswith("boletim:exibicao:"))
 
-    @override_settings(CACHE_PDF_TTL=600)
-    def test_armazena_pdf_com_ttl_configurado(self) -> None:
-        """Usa a validade específica dos PDFs renderizados."""
+    @override_settings(CACHE_BOLETIM_TTL=900)
+    def test_armazena_contexto_com_ttl_dos_boletins(self) -> None:
+        """Mantém contexto e dados consolidados com a mesma validade."""
         cache_repository = MagicMock()
+        contexto = {"paginas": [], "total_paginas": 0}
 
-        BoletimCacheRepository(cache_repository).armazenar_pdf(
+        BoletimCacheRepository(cache_repository).armazenar_exibicao(
             "chave",
-            b"%PDF",
+            contexto,
         )
 
         cache_repository.armazenar.assert_called_once_with(
             "chave",
-            b"%PDF",
-            ttl=600,
+            contexto,
+            ttl=900,
         )
 
-    def test_descarta_pdf_com_tipo_inesperado(self) -> None:
-        """Trata valores que não são bytes como cache miss."""
-        cache_repository = MagicMock()
-        cache_repository.obter.return_value = "texto"
-
-        resultado = BoletimCacheRepository(cache_repository).obter_pdf("chave")
-
-        self.assertIsNone(resultado)
-
-    @override_settings(CACHE_PDF_LOCK_TTL=300, CACHE_LOCK_WAIT_TIMEOUT=2)
-    def test_bloqueia_pdf_pelo_tempo_da_renderizacao(self) -> None:
-        """Mantém o lock do PDF por mais tempo que o lock da consulta."""
+    @override_settings(
+        CACHE_LOCK_TTL=30,
+        CACHE_BOLETIM_LOCK_WAIT_TIMEOUT=20,
+    )
+    def test_bloqueia_consulta_aguardando_o_preenchimento(self) -> None:
+        """Evita consultas duplicadas durante o preenchimento do cache."""
         cache_repository = MagicMock()
         cache_repository.bloquear.return_value.__enter__.return_value = True
 
-        with BoletimCacheRepository(cache_repository).bloquear_pdf(
+        with BoletimCacheRepository(cache_repository).bloquear(
             "chave"
         ) as adquirido:
             self.assertTrue(adquirido)
 
         cache_repository.bloquear.assert_called_once_with(
             "chave",
-            ttl=300,
-            espera=2,
+            ttl=30,
+            espera=20,
         )
 
     def test_ausencia_de_valor_retorna_cache_vazio(self) -> None:

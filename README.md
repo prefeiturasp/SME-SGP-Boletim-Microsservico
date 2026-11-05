@@ -1,7 +1,8 @@
 # SME-SGP-Boletim-Microsservico
 
 Expõe os dados consolidados dos boletins escolares do SGP e gera os boletins
-em PDF, mantendo as regras de exibição do SME-ServidorRelatorios.
+para impressão no navegador, mantendo as regras de exibição do
+SME-ServidorRelatorios.
 
 ---
 
@@ -124,7 +125,6 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 |--------|------|-----------|
 | GET | `/api/boletim/health/` | Verifica a saúde do processo. |
 | GET | `/api/boletim/` | Retorna os boletins consolidados dos estudantes selecionados. |
-| GET | `/api/boletim/pdf/` | Gera os boletins selecionados em PDF. |
 | GET | `/api/boletim/ultima-atualizacao/` | Retorna a última atualização global ou do recorte filtrado. |
 
 ### Filtros dos boletins
@@ -140,7 +140,7 @@ curl -H "Authorization: Bearer SEU_TOKEN_JWT" \
 | `alunos_codigo` | Não | Lista repetível de códigos de estudantes; sem ela, retorna todos do contexto. |
 | `considera_inativo` | Não | Inclui estudantes inativos quando `true`; o padrão é `false`. |
 | `bimestre` | Não | Restringe a consulta a um bimestre entre `1` e `4`. |
-| `boletins_por_pagina` | Somente PDF | Quantidade de boletins por página: `1`, `2` ou `6`; o padrão é `2`. |
+| `boletins_por_pagina` | Impressão | Quantidade de boletins por página: `1`, `2` ou `6`; o padrão é `2`. |
 
 ---
 
