@@ -57,6 +57,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "sme_sidecar_sdk.integrations.django.ObservabilityMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "django.middleware.gzip.GZipMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
 ]
@@ -107,9 +108,9 @@ CACHE_ULTIMA_ATUALIZACAO_TTL = int(
 CACHE_ABRANGENCIA_TTL = int(os.environ.get("CACHE_ABRANGENCIA_TTL", "300"))
 CACHE_LOCK_TTL = int(os.environ.get("CACHE_LOCK_TTL", "30"))
 CACHE_LOCK_WAIT_TIMEOUT = float(os.environ.get("CACHE_LOCK_WAIT_TIMEOUT", "2"))
-CACHE_PDF_TTL = int(os.environ.get("CACHE_PDF_TTL", str(CACHE_BOLETIM_TTL)))
-CACHE_PDF_LOCK_TTL = int(os.environ.get("CACHE_PDF_LOCK_TTL", "300"))
-PDF_MAX_WORKERS = max(1, int(os.environ.get("PDF_MAX_WORKERS", "2")))
+CACHE_BOLETIM_LOCK_WAIT_TIMEOUT = float(
+    os.environ.get("CACHE_BOLETIM_LOCK_WAIT_TIMEOUT", "20")
+)
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.dummy.DummyCache",
@@ -148,6 +149,9 @@ BEARER_TOKEN_ALGORITHMS = [
 ]
 
 REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "apps.core.renderers.OrjsonRenderer",
+    ],
     "EXCEPTION_HANDLER": "apps.core.exceptions.exception_handler",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

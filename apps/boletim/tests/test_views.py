@@ -12,10 +12,10 @@ from apps.abrangencia.exceptions import (
     ServicoAbrangenciaIndisponivel,
 )
 from apps.abrangencia.models import Abrangencia, TipoAbrangencia
+from apps.boletim.apresentador import montar_contexto_exibicao
 from apps.boletim.serializers import MODALIDADES_CHOICES
 
 _URL_COLETIVA = "/api/boletim/"
-_URL_PDF = "/api/boletim/pdf/"
 _URL_ULTIMA_ATUALIZACAO = "/api/boletim/ultima-atualizacao/"
 
 
@@ -43,6 +43,19 @@ def _boletim() -> dict[str, object]:
     }
 
 
+def _contexto(
+    boletins: list[dict[str, object]] | None = None,
+    boletins_por_pagina: int = 2,
+) -> dict[str, object]:
+    """Cria um contexto de exibição válido para os testes da view."""
+    return dict(
+        montar_contexto_exibicao(
+            boletins if boletins is not None else [_boletim()],
+            boletins_por_pagina,
+        )
+    )
+
+
 def _cliente_autenticado() -> APIClient:
     """Cria um cliente com a API key definida nas configurações."""
     client = APIClient()
@@ -58,12 +71,12 @@ class TestBoletinsView(TestCase):
         """Prepara um cliente autenticado para os testes."""
         self.client = _cliente_autenticado()
 
-    def test_permite_preflight_do_pdf_sem_autenticacao(self) -> None:
-        """Responde ao preflight do PDF antes de exigir autenticação."""
+    def test_permite_preflight_sem_autenticacao(self) -> None:
+        """Responde ao preflight antes de exigir autenticação."""
         client = APIClient()
 
         response = client.options(
-            _URL_PDF,
+            _URL_COLETIVA,
             HTTP_ORIGIN="http://localhost:3000",
             HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
             HTTP_ACCESS_CONTROL_REQUEST_HEADERS="authorization, accept",
@@ -82,10 +95,12 @@ class TestBoletinsView(TestCase):
         self.assertIn("origin", response["Vary"].lower())
 
     @patch("apps.boletim.api.views.BoletimService")
-    def test_retorna_boletins_de_varios_alunos(self, service_class) -> None:
-        """Aceita vários códigos de aluno e retorna uma lista."""
+    def test_retorna_contexto_de_exibicao_de_varios_alunos(
+        self, service_class
+    ) -> None:
+        """Aceita vários alunos e retorna o contexto pronto para exibição."""
         service = service_class.return_value
-        service.listar_boletins.return_value = [_boletim()]
+        service.obter_contexto_exibicao.return_value = _contexto()
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -101,8 +116,14 @@ class TestBoletinsView(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.json()), 1)
-        service.listar_boletins.assert_called_once_with(
+        payload = response.json()
+        self.assertEqual(payload["boletins_por_pagina"], 2)
+        self.assertEqual(payload["total_paginas"], 1)
+        self.assertEqual(
+            payload["paginas"][0]["linhas"][0]["boletins"][0]["nome_aluno"],
+            "Estudante",
+        )
+        service.obter_contexto_exibicao.assert_called_once_with(
             ano_letivo=2026,
             dre_codigo="108200",
             ue_codigo="094501",
@@ -112,13 +133,38 @@ class TestBoletinsView(TestCase):
             considera_inativo=False,
             turma_codigo="1234567",
             bimestre=None,
+            boletins_por_pagina=2,
         )
+
+    @patch("apps.boletim.api.views.BoletimService")
+    def test_aplica_quantidade_de_boletins_por_pagina(
+        self, service_class
+    ) -> None:
+        """Organiza o contexto conforme a densidade solicitada."""
+        service_class.return_value.obter_contexto_exibicao.return_value = (
+            _contexto([_boletim(), _boletim()], 1)
+        )
+
+        response = self.client.get(
+            _URL_COLETIVA,
+            {
+                "ano_letivo": 2026,
+                "dre_codigo": "108200",
+                "ue_codigo": "094501",
+                "semestre": 1,
+                "modalidade": 5,
+                "boletins_por_pagina": 1,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["total_paginas"], 2)
 
     @patch("apps.boletim.api.views.BoletimService")
     def test_sem_alunos_codigo_solicita_todos(self, service_class) -> None:
         """Usa uma lista vazia para selecionar todos os alunos."""
         service = service_class.return_value
-        service.listar_boletins.return_value = [_boletim()]
+        service.obter_contexto_exibicao.return_value = _contexto()
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -133,14 +179,15 @@ class TestBoletinsView(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            service.listar_boletins.call_args.kwargs["alunos_codigo"], []
+            service.obter_contexto_exibicao.call_args.kwargs["alunos_codigo"],
+            [],
         )
 
     @patch("apps.boletim.api.views.BoletimService")
     def test_permite_incluir_estudantes_inativos(self, service_class) -> None:
         """Encaminha a opção de imprimir estudantes inativos."""
         service = service_class.return_value
-        service.listar_boletins.return_value = [_boletim()]
+        service.obter_contexto_exibicao.return_value = _contexto()
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -156,7 +203,9 @@ class TestBoletinsView(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
-            service.listar_boletins.call_args.kwargs["considera_inativo"]
+            service.obter_contexto_exibicao.call_args.kwargs[
+                "considera_inativo"
+            ]
         )
 
     def test_exige_contexto_da_consulta(self) -> None:
@@ -181,7 +230,9 @@ class TestBoletinsView(TestCase):
         self, service_class, obter_abrangencia
     ) -> None:
         """Autoriza a consulta com JWT sem exigir API key."""
-        service_class.return_value.listar_boletins.return_value = [_boletim()]
+        service_class.return_value.obter_contexto_exibicao.return_value = (
+            _contexto()
+        )
         obter_abrangencia.return_value = Abrangencia(
             tipo=TipoAbrangencia.UE,
             dres=frozenset(),
@@ -271,10 +322,10 @@ class TestBoletinsView(TestCase):
     )
     @patch("apps.abrangencia.service.AbrangenciaClient.obter_vigente")
     @patch("apps.boletim.api.views.BoletimService")
-    def test_rejeita_pdf_quando_uma_das_turmas_esta_fora_da_abrangencia(
+    def test_rejeita_consulta_quando_turma_esta_fora_da_abrangencia(
         self, service_class, obter_abrangencia
     ) -> None:
-        """Rejeita o PDF se uma turma repetida não for permitida."""
+        """Rejeita a consulta se uma turma repetida não for permitida."""
         obter_abrangencia.return_value = Abrangencia(
             tipo=TipoAbrangencia.PROFESSOR,
             dres=frozenset(),
@@ -296,7 +347,8 @@ class TestBoletinsView(TestCase):
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
         response = client.get(
-            _URL_PDF + "?ano_letivo=2026&dre_codigo=108100&ue_codigo=019715"
+            _URL_COLETIVA
+            + "?ano_letivo=2026&dre_codigo=108100&ue_codigo=019715"
             "&semestre=0&modalidade=5&boletins_por_pagina=2"
             "&turma_codigo=2853538&turma_codigo=3026635"
         )
@@ -355,7 +407,7 @@ class TestBoletinsView(TestCase):
     def test_aceita_semestre_zero(self, service_class) -> None:
         """Encaminha semestre zero na consulta coletiva."""
         service = service_class.return_value
-        service.listar_boletins.return_value = [_boletim()]
+        service.obter_contexto_exibicao.return_value = _contexto()
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -370,7 +422,8 @@ class TestBoletinsView(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            service.listar_boletins.call_args.kwargs["semestre"], 0
+            service.obter_contexto_exibicao.call_args.kwargs["semestre"],
+            0,
         )
 
     @patch("apps.boletim.api.views.BoletimService")
@@ -378,7 +431,7 @@ class TestBoletinsView(TestCase):
         self, service_class
     ) -> None:
         """Retorna HTTP 204 sem corpo quando a consulta está vazia."""
-        service_class.return_value.listar_boletins.return_value = []
+        service_class.return_value.obter_contexto_exibicao.return_value = None
 
         response = self.client.get(
             _URL_COLETIVA,
@@ -453,131 +506,6 @@ class TestUltimaAtualizacaoBoletimView(TestCase):
         )
 
 
-class TestBoletinsPdfView(TestCase):
-    """Valida o contrato HTTP da geração coletiva em PDF."""
-
-    def setUp(self) -> None:
-        """Prepara um cliente autenticado para os testes."""
-        self.client = _cliente_autenticado()
-
-    @patch("apps.boletim.api.views.BoletimService")
-    def test_retorna_pdf_com_dois_boletins_por_padrao(
-        self, service_class
-    ) -> None:
-        """Gera PDF inline e usa duas vias por página como no relatório."""
-        service_class.return_value.gerar_boletins_pdf.return_value = (
-            b"%PDF-teste"
-        )
-
-        response = self.client.get(_URL_PDF, self._filtros())
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "application/pdf")
-        self.assertEqual(
-            response["Content-Disposition"],
-            'inline; filename="boletins-escolares.pdf"',
-        )
-        self.assertEqual(response.content, b"%PDF-teste")
-        service_class.return_value.gerar_boletins_pdf.assert_called_once_with(
-            ano_letivo=2026,
-            dre_codigo="108200",
-            ue_codigo="094501",
-            semestre=1,
-            modalidade=5,
-            alunos_codigo=[],
-            boletins_por_pagina=2,
-            considera_inativo=False,
-            turma_codigo=None,
-            bimestre=None,
-        )
-
-    def test_rejeita_quantidade_de_boletins_nao_suportada(self) -> None:
-        """Retorna HTTP 400 quando a paginação não é 1, 2 ou 6."""
-        filtros = self._filtros()
-        filtros["boletins_por_pagina"] = 4
-
-        response = self.client.get(_URL_PDF, filtros)
-
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("boletins_por_pagina", response.json())
-
-    @patch("apps.boletim.api.views.BoletimService")
-    def test_negocia_pdf_solicitado_pelo_swagger(self, service_class) -> None:
-        """Aceita o media type de PDF enviado pelo Swagger UI."""
-        service_class.return_value.gerar_boletins_pdf.return_value = (
-            b"%PDF-teste"
-        )
-
-        response = self.client.get(
-            _URL_PDF,
-            self._filtros(),
-            HTTP_ACCEPT="application/pdf",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "application/pdf")
-        self.assertEqual(response.content, b"%PDF-teste")
-
-    def test_mantem_erro_em_json_quando_swagger_solicita_pdf(self) -> None:
-        """Retorna validação em JSON mesmo sob negociação de PDF."""
-        response = self.client.get(
-            _URL_PDF,
-            {"ano_letivo": 2026},
-            HTTP_ACCEPT="application/pdf",
-        )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response["Content-Type"], "application/json")
-        self.assertIn("dre_codigo", response.json())
-
-    @patch("apps.boletim.api.views.BoletimService")
-    def test_pdf_permite_incluir_estudantes_inativos(
-        self, service_class
-    ) -> None:
-        """Encaminha estudantes inativos para a consulta do PDF."""
-        service_class.return_value.gerar_boletins_pdf.return_value = (
-            b"%PDF-teste"
-        )
-        filtros = self._filtros()
-        filtros["considera_inativo"] = True
-
-        response = self.client.get(_URL_PDF, filtros)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(
-            service_class.return_value.gerar_boletins_pdf.call_args.kwargs[
-                "considera_inativo"
-            ]
-        )
-
-    @patch("apps.boletim.api.views.BoletimService")
-    def test_pdf_retorna_sem_conteudo_quando_nao_ha_dados(
-        self, service_class
-    ) -> None:
-        """Retorna HTTP 204 sem corpo nem PDF quando a consulta está vazia."""
-        service_class.return_value.gerar_boletins_pdf.return_value = None
-
-        response = self.client.get(_URL_PDF, self._filtros())
-
-        self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.content, b"")
-        self.assertEqual(
-            response["X-Mensagem"],
-            "Alunos da turma não foram encontrados.",
-        )
-
-    @staticmethod
-    def _filtros() -> dict[str, int | str]:
-        """Retorna os filtros mínimos aceitos pelo endpoint PDF."""
-        return {
-            "ano_letivo": 2026,
-            "dre_codigo": "108200",
-            "ue_codigo": "094501",
-            "semestre": 1,
-            "modalidade": 5,
-        }
-
-
 class TestDocumentacaoBoletim(TestCase):
     """Valida a documentação OpenAPI do boletim."""
 
@@ -592,17 +520,6 @@ class TestDocumentacaoBoletim(TestCase):
         schema = response.json()
         esperados_por_caminho = {
             "/api/boletim/": {
-                "ano_letivo",
-                "dre_codigo",
-                "ue_codigo",
-                "semestre",
-                "turma_codigo",
-                "modalidade",
-                "alunos_codigo",
-                "considera_inativo",
-                "bimestre",
-            },
-            "/api/boletim/pdf/": {
                 "ano_letivo",
                 "dre_codigo",
                 "ue_codigo",
@@ -643,7 +560,6 @@ class TestDocumentacaoBoletim(TestCase):
         schema = response.json()
         for caminho in (
             "/api/boletim/",
-            "/api/boletim/pdf/",
             "/api/boletim/ultima-atualizacao/",
         ):
             parametros = schema["paths"][caminho]["get"]["parameters"]
@@ -657,24 +573,6 @@ class TestDocumentacaoBoletim(TestCase):
                     f"`{codigo}` - {descricao}",
                     modalidade["description"],
                 )
-
-    def test_documenta_respostas_do_endpoint_pdf(self) -> None:
-        """Documenta o PDF e a resposta sem conteúdo com sua mensagem."""
-        response = APIClient().get(
-            "/boletim/api/schema/",
-            HTTP_ACCEPT="application/json",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        respostas = response.json()["paths"]["/api/boletim/pdf/"]["get"][
-            "responses"
-        ]
-        self.assertIn("application/pdf", respostas["200"]["content"])
-        self.assertNotIn("content", respostas["204"])
-        self.assertEqual(
-            respostas["204"]["headers"]["X-Mensagem"]["schema"]["type"],
-            "string",
-        )
 
     def test_documenta_api_key_ou_bearer_como_alternativas(self) -> None:
         """Publica os dois esquemas de autenticação em relação OU."""
@@ -694,8 +592,8 @@ class TestDocumentacaoBoletim(TestCase):
         )
 
 
-class TestEndpointAlunoRemovido(TestCase):
-    """Valida a remoção da consulta individual de boletim."""
+class TestEndpointsRemovidos(TestCase):
+    """Valida as rotas que não pertencem mais ao microsserviço."""
 
     def test_rota_individual_nao_existe(self) -> None:
         """Retorna HTTP 404 para o endpoint individual removido."""
@@ -703,5 +601,11 @@ class TestEndpointAlunoRemovido(TestCase):
             "/api/boletim/alunos/123/",
             {"ano_letivo": 2026},
         )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_rota_pdf_nao_existe(self) -> None:
+        """Retorna HTTP 404 para a antiga geração de PDF."""
+        response = _cliente_autenticado().get("/api/boletim/pdf/")
 
         self.assertEqual(response.status_code, 404)

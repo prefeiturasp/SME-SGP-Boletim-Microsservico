@@ -1,7 +1,7 @@
 """Testes dos serviços de boletim."""
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 from django.test import SimpleTestCase
 
@@ -14,79 +14,77 @@ from apps.boletim.services import BoletimService
 class TestBoletimService(SimpleTestCase):
     """Valida a orquestração das consultas de boletim."""
 
-    def test_retorna_pdf_do_cache_sem_consultar_nem_renderizar(self) -> None:
-        """Reaproveita o PDF pronto quando ele já está no cache."""
+    def test_retorna_contexto_de_exibicao_do_cache(self) -> None:
+        """Evita reconstruir o layout quando o contexto já está pronto."""
         repository = MagicMock()
         cache_repository = MagicMock()
-        gerador_pdf = MagicMock()
-        cache_repository.gerar_chave.return_value = "boletim:consulta:abc"
-        cache_repository.gerar_chave_pdf.return_value = "chave-pdf"
-        cache_repository.obter_pdf.return_value = b"%PDF-cache"
-
-        pdf = self._gerar_pdf(repository, cache_repository, gerador_pdf)
-
-        self.assertEqual(pdf, b"%PDF-cache")
-        cache_repository.gerar_chave_pdf.assert_called_once_with(
-            "boletim:consulta:abc",
-            1,
+        cache_repository.gerar_chave.return_value = "consulta"
+        cache_repository.gerar_chave_exibicao.side_effect = (
+            lambda _, layout: f"contexto-{layout}"
         )
+        esperado = {"paginas": [], "total_paginas": 0}
+        cache_repository.obter_exibicao.return_value = esperado
+
+        resultado = self._obter_contexto(repository, cache_repository)
+
+        self.assertEqual(resultado, esperado)
         repository.listar_boletins.assert_not_called()
-        gerador_pdf.gerar.assert_not_called()
+        cache_repository.armazenar_exibicao.assert_not_called()
 
-    def test_renderiza_e_armazena_pdf_quando_cache_vazio(self) -> None:
-        """Renderiza uma única vez sob lock e guarda o PDF no cache."""
+    def test_monta_e_armazena_contexto_de_exibicao(self) -> None:
+        """Prepara o layout uma vez quando o cache do contexto está vazio."""
         repository = MagicMock()
+        repository.listar_boletins.return_value = [
+            self._registro(modalidade=5, bimestre=1)
+        ]
         cache_repository = MagicMock()
-        gerador_pdf = MagicMock()
-        cache_repository.gerar_chave_pdf.return_value = "chave-pdf"
-        cache_repository.obter_pdf.return_value = None
-        cache_repository.obter.return_value = [{"dados_aluno": {}}]
-        cache_repository.bloquear_pdf.return_value.__enter__.return_value = (
-            True
+        cache_repository.gerar_chave.return_value = "consulta"
+        cache_repository.gerar_chave_exibicao.side_effect = (
+            lambda _, layout: f"contexto-{layout}"
         )
-        gerador_pdf.gerar.return_value = b"%PDF-novo"
+        cache_repository.obter_exibicao.return_value = None
+        cache_repository.obter.return_value = None
+        cache_repository.bloquear.return_value.__enter__.return_value = True
 
-        pdf = self._gerar_pdf(repository, cache_repository, gerador_pdf)
+        resultado = self._obter_contexto(repository, cache_repository)
 
-        self.assertEqual(pdf, b"%PDF-novo")
-        gerador_pdf.gerar.assert_called_once_with(
-            [{"dados_aluno": {}}],
-            boletins_por_pagina=1,
+        self.assertIsNotNone(resultado)
+        assert resultado is not None
+        self.assertEqual(resultado["total_paginas"], 1)
+        self.assertEqual(
+            [
+                item.args[0]
+                for item in cache_repository.armazenar_exibicao.call_args_list
+            ],
+            ["contexto-1", "contexto-2", "contexto-6"],
         )
-        cache_repository.armazenar_pdf.assert_called_once_with(
-            "chave-pdf",
-            b"%PDF-novo",
+        cache_repository.armazenar.assert_not_called()
+        cache_repository.bloquear.assert_called_once_with("consulta")
+        self.assertEqual(
+            cache_repository.gerar_chave_exibicao.call_args_list,
+            [
+                call("consulta", 1),
+                call("consulta", 1),
+                call("consulta", 2),
+                call("consulta", 6),
+            ],
         )
 
-    def test_retorna_pdf_gerado_por_outra_requisicao_sem_lock(self) -> None:
-        """Usa o PDF armazenado enquanto outra requisição tinha o lock."""
+    def test_nao_armazena_contexto_sem_boletins(self) -> None:
+        """Preserva a resposta vazia sem criar entrada de contexto."""
+        repository = MagicMock()
+        repository.listar_boletins.return_value = []
         cache_repository = MagicMock()
-        gerador_pdf = MagicMock()
-        cache_repository.obter_pdf.side_effect = [None, b"%PDF-concorrente"]
-        cache_repository.bloquear_pdf.return_value.__enter__.return_value = (
-            False
-        )
+        cache_repository.gerar_chave.return_value = "consulta"
+        cache_repository.gerar_chave_exibicao.return_value = "contexto"
+        cache_repository.obter_exibicao.return_value = None
+        cache_repository.obter.return_value = None
+        cache_repository.bloquear.return_value.__enter__.return_value = True
 
-        pdf = self._gerar_pdf(MagicMock(), cache_repository, gerador_pdf)
+        resultado = self._obter_contexto(repository, cache_repository)
 
-        self.assertEqual(pdf, b"%PDF-concorrente")
-        gerador_pdf.gerar.assert_not_called()
-
-    def test_nao_gera_pdf_quando_nao_ha_boletins(self) -> None:
-        """Retorna vazio sem renderizar nem armazenar documento."""
-        cache_repository = MagicMock()
-        gerador_pdf = MagicMock()
-        cache_repository.obter_pdf.return_value = None
-        cache_repository.obter.return_value = []
-        cache_repository.bloquear_pdf.return_value.__enter__.return_value = (
-            True
-        )
-
-        pdf = self._gerar_pdf(MagicMock(), cache_repository, gerador_pdf)
-
-        self.assertIsNone(pdf)
-        gerador_pdf.gerar.assert_not_called()
-        cache_repository.armazenar_pdf.assert_not_called()
+        self.assertIsNone(resultado)
+        cache_repository.armazenar_exibicao.assert_not_called()
 
     def test_obtem_ultima_atualizacao_sem_filtros(self) -> None:
         """Consulta a atualização global quando nenhum filtro é informado."""
@@ -647,17 +645,15 @@ class TestBoletimService(SimpleTestCase):
         )[0]
 
     @staticmethod
-    def _gerar_pdf(
+    def _obter_contexto(
         repository: MagicMock,
         cache_repository: MagicMock,
-        gerador_pdf: MagicMock,
-    ) -> bytes | None:
-        """Executa a geração do PDF com o contexto padrão dos testes."""
+    ) -> dict[str, object] | None:
+        """Executa a montagem do contexto com os filtros padrão."""
         return BoletimService(
             repository,
             cache_repository,
-            gerador_pdf,
-        ).gerar_boletins_pdf(
+        ).obter_contexto_exibicao(
             ano_letivo=2026,
             dre_codigo="1",
             ue_codigo="2",
