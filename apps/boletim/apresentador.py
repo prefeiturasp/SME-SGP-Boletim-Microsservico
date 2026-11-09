@@ -1,4 +1,4 @@
-"""Prepara os dados dos boletins para o template PDF."""
+"""Prepara os dados dos boletins para exibição no navegador."""
 
 import re
 from collections.abc import Iterable, Mapping
@@ -31,51 +31,51 @@ _ABREVIACAO_MODALIDADE = {
 }
 
 
-class LinhaBoletinsPdf(TypedDict):
-    """Representa um boletim exibido em largura cheia na página."""
+class LinhaExibicao(TypedDict):
+    """Agrupa os boletins exibidos em uma linha da página."""
 
     boletins: list[dict[str, object]]
 
 
-class PaginaBoletinsPdf(TypedDict):
-    """Representa uma página física do relatório."""
+class PaginaExibicao(TypedDict):
+    """Agrupa as linhas de uma página do layout de impressão."""
 
-    linhas: list[LinhaBoletinsPdf]
+    linhas: list[LinhaExibicao]
 
 
-class ContextoBoletinsPdf(TypedDict):
-    """Representa o contexto entregue ao template de PDF."""
+class ContextoExibicao(TypedDict):
+    """Define o contexto paginado para exibição dos boletins."""
 
-    paginas: list[PaginaBoletinsPdf]
+    paginas: list[PaginaExibicao]
     boletins_por_pagina: int
     dados_atualizados_em: str | None
-    data_impressao: str
+    data_geracao: str
     total_paginas: int
 
 
-def montar_contexto_pdf(
+def montar_contexto_exibicao(
     boletins: list[dict[str, object]],
     boletins_por_pagina: int,
-) -> ContextoBoletinsPdf:
-    """Organiza boletins formatados em páginas, empilhados em largura cheia.
+) -> ContextoExibicao:
+    """Organiza os boletins em páginas do layout de impressão.
 
     Args:
         boletins: Boletins consolidados retornados pelo serviço.
         boletins_por_pagina: Quantidade máxima de boletins por página.
 
     Returns:
-        Contexto pronto para o template `boletins.html`.
+        Contexto paginado para exibição dos boletins.
     """
     ordenados = sorted(boletins, key=_chave_ordenacao)
     formatados = [
         _formatar_boletim(boletim, boletins_por_pagina)
         for boletim in ordenados
     ]
-    paginas: list[PaginaBoletinsPdf] = []
+    paginas: list[PaginaExibicao] = []
     for inicio in range(0, len(formatados), boletins_por_pagina):
         itens = formatados[inicio : inicio + boletins_por_pagina]
         quantidade_por_linha = 2 if boletins_por_pagina == 6 else 1
-        linhas: list[LinhaBoletinsPdf] = [
+        linhas: list[LinhaExibicao] = [
             {"boletins": itens[indice : indice + quantidade_por_linha]}
             for indice in range(0, len(itens), quantidade_por_linha)
         ]
@@ -84,7 +84,7 @@ def montar_contexto_pdf(
         "paginas": paginas,
         "boletins_por_pagina": boletins_por_pagina,
         "dados_atualizados_em": _formatar_atualizacao_dados(boletins),
-        "data_impressao": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
+        "data_geracao": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
         "total_paginas": len(paginas),
     }
 
@@ -92,7 +92,7 @@ def montar_contexto_pdf(
 def _formatar_atualizacao_dados(
     boletins: Iterable[Mapping[str, object]],
 ) -> str | None:
-    """Formata a atualização mais recente dos dados usados no PDF."""
+    """Formata a atualização mais recente dos dados exibidos."""
     atualizacoes = [
         atualizacao
         for boletim in boletins
@@ -123,14 +123,15 @@ def _formatar_boletim(
     boletim: dict[str, object],
     boletins_por_pagina: int,
 ) -> dict[str, object]:
-    """Formata um boletim consolidado para exibição no PDF.
+    """Formata um boletim consolidado para o layout de impressão.
 
     Args:
         boletim: Boletim consolidado, com dados do aluno, componentes e
             regências.
+        boletins_por_pagina: Densidade do layout usada na formatação.
 
     Returns:
-        Boletim formatado, pronto para o template.
+        Boletim formatado, pronto para exibição.
     """
     dados_brutos = _mapa(boletim.get("dados_aluno"))
     modalidade = _inteiro(dados_brutos.get("modalidade_codigo"))
@@ -265,7 +266,7 @@ def _agrupar_por_matriz(
 ) -> list[dict[str, object]]:
     """Separa os componentes por grupo de matriz, na ordem recebida.
 
-    Cada grupo vira uma tabela própria no PDF, com espaço entre elas.
+    Cada grupo representa uma seção própria, com espaço entre elas.
 
     Args:
         componentes: Componentes curriculares na ordem oficial de exibição.
@@ -284,7 +285,7 @@ def _agrupar_por_matriz(
     }
     ordenados = sorted(
         componentes,
-        key=lambda componente: _chave_ordenacao_grupo_pdf(
+        key=lambda componente: _chave_ordenacao_grupo_exibicao(
             componente,
         ),
     )
@@ -298,7 +299,7 @@ def _agrupar_por_matriz(
     return grupos
 
 
-def _chave_ordenacao_grupo_pdf(
+def _chave_ordenacao_grupo_exibicao(
     componente: Mapping[str, object],
 ) -> tuple[int, str]:
     """Ordene componentes dentro dos subgrupos como no relatório legado."""
@@ -580,7 +581,7 @@ def _formatar_componente(
     componente: Mapping[str, object],
     periodos: tuple[int, ...],
 ) -> dict[str, object]:
-    """Formata um componente curricular normal para exibição no PDF.
+    """Formata um componente curricular para o layout de impressão.
 
     Args:
         componente: Componente curricular consolidado.

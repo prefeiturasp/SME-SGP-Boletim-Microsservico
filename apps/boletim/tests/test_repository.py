@@ -18,18 +18,21 @@ class TestBoletimRepository(SimpleTestCase):
         consulta = MagicMock()
         objects.filter.return_value = consulta
         consulta.filter.return_value = consulta
-        consulta.only.return_value = consulta
         consulta.order_by.return_value = consulta
+        consulta.values_list.return_value = consulta
+        consulta.iterator.return_value = iter(())
 
-        BoletimRepository().listar_boletins(
-            ano_letivo=2026,
-            dre_codigo="108200",
-            ue_codigo="094501",
-            semestre=1,
-            modalidade=5,
-            alunos_codigo=[123, 456],
-            considera_inativo=False,
-            turma_codigo="1234567",
+        list(
+            BoletimRepository().listar_boletins(
+                ano_letivo=2026,
+                dre_codigo="108200",
+                ue_codigo="094501",
+                semestre=1,
+                modalidade=5,
+                alunos_codigo=[123, 456],
+                considera_inativo=False,
+                turma_codigo="1234567",
+            )
         )
 
         objects.filter.assert_called_once_with(
@@ -42,6 +45,9 @@ class TestBoletimRepository(SimpleTestCase):
             codigo_situacao_matricula__in=CODIGO_SITUACAO_ALUNO_ATIVO,
         )
         consulta.filter.assert_called_once_with(aluno_codigo__in=[123, 456])
+        campos = consulta.values_list.call_args.args
+        self.assertNotIn("codigo_situacao_matricula", campos)
+        consulta.iterator.assert_called_once_with(chunk_size=2000)
 
     @patch("apps.boletim.repository.Boletim.objects")
     def test_lista_todos_os_alunos_quando_lista_vazia(
@@ -50,17 +56,20 @@ class TestBoletimRepository(SimpleTestCase):
         """Não restringe aluno quando nenhum código é informado."""
         consulta = MagicMock()
         objects.filter.return_value = consulta
-        consulta.only.return_value = consulta
         consulta.order_by.return_value = consulta
+        consulta.values_list.return_value = consulta
+        consulta.iterator.return_value = iter(())
 
-        BoletimRepository().listar_boletins(
-            ano_letivo=2026,
-            dre_codigo="108200",
-            ue_codigo="094501",
-            semestre=1,
-            modalidade=5,
-            alunos_codigo=[],
-            considera_inativo=True,
+        list(
+            BoletimRepository().listar_boletins(
+                ano_letivo=2026,
+                dre_codigo="108200",
+                ue_codigo="094501",
+                semestre=1,
+                modalidade=5,
+                alunos_codigo=[],
+                considera_inativo=True,
+            )
         )
 
         objects.filter.assert_called_once_with(

@@ -105,6 +105,32 @@ class BoletimCacheRepository:
             ttl=settings.CACHE_BOLETIM_TTL,
         )
 
+    @staticmethod
+    def gerar_chave_exibicao(
+        chave_consulta: str,
+        boletins_por_pagina: int,
+    ) -> str:
+        """Gera a chave do contexto de exibição por consulta e layout."""
+        resumo = chave_consulta.rsplit(":", 1)[-1]
+        return f"boletim:exibicao:{resumo}:{boletins_por_pagina}"
+
+    def obter_exibicao(self, chave: str) -> dict[str, object] | None:
+        """Busca um contexto de exibição previamente preparado."""
+        resultado = self._cache_repository.obter(chave)
+        return resultado if isinstance(resultado, dict) else None
+
+    def armazenar_exibicao(
+        self,
+        chave: str,
+        contexto: dict[str, object],
+    ) -> None:
+        """Armazena o contexto pelo mesmo TTL dos dados consolidados."""
+        self._cache_repository.armazenar(
+            chave,
+            contexto,
+            ttl=settings.CACHE_BOLETIM_TTL,
+        )
+
     def armazenar_ultima_atualizacao(
         self,
         chave: str,
@@ -117,41 +143,12 @@ class BoletimCacheRepository:
             ttl=settings.CACHE_ULTIMA_ATUALIZACAO_TTL,
         )
 
-    @staticmethod
-    def gerar_chave_pdf(chave_consulta: str, boletins_por_pagina: int) -> str:
-        """Gera a chave do PDF a partir da chave da consulta e do layout."""
-        resumo = chave_consulta.rsplit(":", 1)[-1]
-        return f"boletim:pdf:{resumo}:{boletins_por_pagina}"
-
-    def obter_pdf(self, chave: str) -> bytes | None:
-        """Busca o PDF renderizado sem interromper falhas do cache."""
-        resultado = self._cache_repository.obter(chave)
-        return resultado if isinstance(resultado, bytes) else None
-
-    def armazenar_pdf(self, chave: str, pdf: bytes) -> None:
-        """Armazena o PDF renderizado pelo TTL definido no ambiente."""
-        self._cache_repository.armazenar(
-            chave,
-            pdf,
-            ttl=settings.CACHE_PDF_TTL,
-        )
-
-    @contextmanager
-    def bloquear_pdf(self, chave: str) -> Iterator[bool]:
-        """Evita renderizações simultâneas do mesmo PDF."""
-        with self._cache_repository.bloquear(
-            chave,
-            ttl=settings.CACHE_PDF_LOCK_TTL,
-            espera=settings.CACHE_LOCK_WAIT_TIMEOUT,
-        ) as adquirido:
-            yield adquirido
-
     @contextmanager
     def bloquear(self, chave: str) -> Iterator[bool]:
         """Protege a criação de uma entrada contra processamento duplicado."""
         with self._cache_repository.bloquear(
             chave,
             ttl=settings.CACHE_LOCK_TTL,
-            espera=settings.CACHE_LOCK_WAIT_TIMEOUT,
+            espera=settings.CACHE_BOLETIM_LOCK_WAIT_TIMEOUT,
         ) as adquirido:
             yield adquirido
